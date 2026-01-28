@@ -76,6 +76,17 @@ button:focus-visible {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
+
+
+  
+  /* Brand Accents */
+  --accent-cyan: #7dd3fc;
+  --accent-purple: #a78bfa;
+  --accent-violet: #c084fc;
+
+  /* Brand Gradients */
+  --grad-primary: linear-gradient(90deg, #7dd3fc, #a78bfa, #c084fc);
+  --grad-icon: linear-gradient(145deg, var(--accent-cyan), var(--accent-purple));
   
   /* Background white rakhenge taki tumhara design clean dikhe */
   background-color: #ffffff; 
