@@ -49,9 +49,9 @@ const CandidateSchema = new mongoose.Schema({
   position: { type: String, required: true },
   fls: { type: String },
   name: { type: String, required: true },
-  contact: { type: String, required: true },
-  email: { type: String, required: true },
-  callBackDate: { type: String, default: "" }, // Dashboard isi ko read karega
+  contact: { type: String, required: true }, // Removed unique - we auto-generate anyway
+  email: { type: String, required: true, unique: true, lowercase: true }, // Keep unique for email only
+  callBackDate: { type: String, default: "" },
   companyName: { type: String },
   experience: { type: String },
   ctc: { type: String },

@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useRef, useMemo } from 'react';
+import axios from 'axios';
 import { 
-  Plus, Search, Mail, MessageCircle, 
+  Plus, Search, Mail, MessageCircle,Upload, 
   Filter, CheckSquare, Square, FileText, Cpu, Trash2, Edit, X, Briefcase,BarChart3 
 } from 'lucide-react';
 import { useParsing } from '../hooks/useParsing';
@@ -12,8 +13,14 @@ import { useNavigate } from 'react-router-dom';
 
 const ATS = () => {
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
+
+
   const API_URL = 'http://localhost:5000/candidates';
+// Pehle: const API_URL = 'http://localhost:5000/candidates';
+// const API_URL = 'http://localhost:5000/api/candidates';  
   const JOBS_URL = 'http://localhost:5000/jobs';
+  const BULK_UPLOAD_URL = 'http://localhost:5000/candidates/bulk-upload';
 
   const [candidates, setCandidates] = useState([]);
   const [jobs, setJobs] = useState([]);
@@ -25,14 +32,15 @@ const ATS = () => {
   const [showPreview, setShowPreview] = useState(false); 
   const [isAutoParsing, setIsAutoParsing] = useState(false);
 
-  const initialFormState = {
+ const initialFormState = {
     srNo: '', date: new Date().toISOString().split('T')[0], location: '', position: '',
     fls: '', name: '', contact: '', email: '', companyName: '', experience: '',
-    ctc: '', expectedCtc: '', noticePeriod: '', status: 'Applied', client: '', 
-    spoc: '', source: '', resume: null ,callBackDate: ''
-  };
+    ctc: '', expectedCtc: '', noticePeriod: '', status: 'Applied', client: '',
+    spoc: '', source: '', resume: null, callBackDate: ''
+};
   const [formData, setFormData] = useState(initialFormState);
 
+  // --- Data Fetch Logic ---
   const fetchData = async () => {
     try {
       const res = await fetch(API_URL);
@@ -47,14 +55,72 @@ const ATS = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  const { selectedIds, isParsing, toggleSelection, selectAll, handleBulkParse } = useParsing(async () => {
+
+const handleBulkUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const uploadData = new FormData();
+    uploadData.append('file', file);
+
+    try {
+        const response = await axios.post(BULK_UPLOAD_URL, uploadData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        
+        if (response.data.success) {
+            // ✅ Show detailed success message
+            let successMsg = `✅ Upload Successful!\n\n`;
+            successMsg += `Successfully Saved: ${response.data.processed}\n`;
+            
+            if (response.data.duplicatesInFile > 0 || response.data.duplicatesInDB > 0) {
+                successMsg += `Duplicates Skipped: ${response.data.duplicatesInFile + response.data.duplicatesInDB}\n`;
+            }
+            
+            if (response.data.totalInFile) {
+                successMsg += `Total Rows in File: ${response.data.totalInFile}`;
+            }
+            
+            alert(successMsg);
+            
+            // ✅ REAL-TIME UPDATE
+            if (response.data.allCandidates && response.data.allCandidates.length > 0) {
+                setCandidates(response.data.allCandidates);
+                console.log("✅ Updated candidates list with:", response.data.allCandidates.length, "records");
+            } else {
+                fetchData();
+            }
+        } else {
+            alert("❌ Upload Failed: " + response.data.message);
+        }
+    } catch (error) {
+        console.error("Bulk Upload Error:", error);
+        
+        let errorMsg = "Something went wrong";
+        
+        if (error.response?.data?.message) {
+            errorMsg = error.response.data.message;
+        } else if (error.response?.status === 400) {
+            errorMsg = "Invalid data format. Please check your Excel file.";
+        } else if (error.response?.status === 500) {
+            errorMsg = "Server error. Please try again later.";
+        }
+        
+        alert("❌ Error: " + errorMsg);
+    } finally {
+        event.target.value = null;
+    }
+};
+
+// Iske niche ka ye useParsing wala part MATH HATANA, isse rehne dena
+const { selectedIds, isParsing, toggleSelection, selectAll, handleBulkParse } = useParsing(async () => {
     await fetchData();
     const res = await fetch(API_URL);
     const latestData = await res.json();
     const newlyParsed = latestData.filter(c => selectedIds.includes(c._id));
     setParsedResults(newlyParsed);
     setShowPreview(true);
-  });
+});
 
   /* ================= NEW BULK COMMUNICATION LOGIC ================= */
 
@@ -98,14 +164,41 @@ const ATS = () => {
     window.open(`https://wa.me/${cleanPhone}`, '_blank');
   };
 
-  const handleDelete = async (id) => {
+  // const handleDelete = async (id) => {
+  //   if (window.confirm("Are you sure?")) {
+  //     try {
+  //       await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+  //       fetchData();
+  //     } catch (err) { alert("Delete failed"); }
+  //   }
+  // };
+
+const handleDelete = async (id) => {
     if (window.confirm("Are you sure?")) {
-      try {
-        await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
-        fetchData();
-      } catch (err) { alert("Delete failed"); }
+        try {
+            console.log("Deleting ID:", id); // Check karein console mein id sahi aa rahi hai
+            
+            const response = await fetch(`${API_URL}/${id}`, { 
+                method: 'DELETE' 
+            });
+
+            if (response.ok) {
+                alert("Deleted successfully!");
+                fetchData(); 
+            } else {
+                const errorData = await response.json();
+                alert(`Error: ${errorData.message}`);
+            }
+        } catch (err) {
+            console.error("Delete Error:", err);
+            alert("Network error: Could not reach the server.");
+        }
     }
-  };
+};
+
+
+
+
 
   const handleEdit = (candidate) => {
     setEditId(candidate._id);
@@ -240,6 +333,34 @@ const handleAddCandidate = async (e) => {
     return matchesSearch && matchesJob;
   });
 
+  // --- Client-side incremental rendering (lazy load rows) ---
+  const CHUNK_SIZE = 50; // render 50 rows at a time
+  const [visibleCount, setVisibleCount] = useState(CHUNK_SIZE);
+
+  // Reset visibleCount when filter/search changes
+  useEffect(() => {
+    setVisibleCount(CHUNK_SIZE);
+  }, [searchQuery, filterJob, candidates]);
+
+  // Memoize the slice to avoid re-computing on unrelated renders
+  const visibleCandidates = useMemo(() => filteredCandidates.slice(0, visibleCount), [filteredCandidates, visibleCount]);
+
+  const loadMoreRef = useRef(null);
+  useEffect(() => {
+    if (!loadMoreRef.current) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          setVisibleCount(prev => Math.min(filteredCandidates.length, prev + CHUNK_SIZE));
+        }
+      });
+    }, { root: null, rootMargin: '200px', threshold: 0.1 });
+
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [filteredCandidates.length]);
+
   const isAllSelected = filteredCandidates.length > 0 && selectedIds.length === filteredCandidates.length;
 
   const tableHeaders = [
@@ -262,6 +383,14 @@ const handleAddCandidate = async (e) => {
         </div>
         
         <div className="flex gap-3 flex-wrap justify-center">
+          {/* Hidden File Input for CSV */}
+          <input 
+            type="file" 
+            accept=".csv, .xlsx, .xls" 
+            ref={fileInputRef} 
+            onChange={handleBulkUpload} 
+            className="hidden" 
+          />
           {selectedIds.length > 0 && (
             <>
               {/* ✅ BULK EMAIL BUTTON */}
@@ -288,6 +417,13 @@ const handleAddCandidate = async (e) => {
             <BarChart3 size={18} /> View Reports
           </button>
 
+{/* NEW: BULK IMPORT BUTTON */}
+          <button 
+            onClick={() => fileInputRef.current.click()} 
+            className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-emerald-700 shadow-lg transition"
+          >
+            <Upload size={20} /> Bulk Import (CSV)
+          </button>
 
           <button onClick={() => { setEditId(null); setFormData(initialFormState); setShowModal(true); }} className="flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-slate-800 shadow-lg transition">
             <Plus size={20} /> Add Candidate
@@ -354,7 +490,7 @@ const handleAddCandidate = async (e) => {
             </tr>
           </thead>
           <tbody>
-            {filteredCandidates.map((candidate,index) => (
+            {visibleCandidates.map((candidate,index) => (
               <tr key={candidate._id} className="border-b hover:bg-slate-50 transition">
                 <td className="p-4 text-center">
                   <div onClick={() => toggleSelection(candidate._id)} className="cursor-pointer">
@@ -404,6 +540,11 @@ const handleAddCandidate = async (e) => {
           </tbody>
         </table>
       </div>             
+
+      {/* Sentinel for lazy-loading more rows */}
+      <div ref={loadMoreRef} className="w-full text-center py-6 text-sm text-gray-500">
+        {visibleCount < filteredCandidates.length ? 'Loading more candidates...' : 'All candidates loaded.'}
+      </div>
 
 {showModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">

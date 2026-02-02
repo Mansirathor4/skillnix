@@ -14,11 +14,14 @@
   "type": "commonjs",
   "dependencies": {
     "cors": "^2.8.5",
+    "csv-parser": "^3.2.0",
     "dotenv": "^16.3.1",
+    "exceljs": "^4.4.0",
     "express": "^4.22.1",
     "mongoose": "^8.21.0",
     "multer": "^2.0.2",
-    "pdf-parse": "^2.4.5"
+    "pdf-parse": "^2.4.5",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "nodemon": "^3.1.11"
