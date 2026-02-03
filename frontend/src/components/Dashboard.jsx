@@ -10,6 +10,7 @@ import {
   PhoneCall,
   Calendar
 } from 'lucide-react';
+import API_URL from '../config';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -22,7 +23,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchCandidates = async () => {
       try {
-        const response = await fetch('http://localhost:5000/candidates'); 
+        const response = await fetch(`${API_URL}/candidates`); 
         const result = await response.json();
         
         // Handle both paginated and raw array formats

@@ -9,6 +9,7 @@ import { useParsing } from '../hooks/useParsing';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import { useNavigate } from 'react-router-dom';
+import BASE_API_URL from '../config';
 
 
 const ATS = () => {
@@ -16,11 +17,11 @@ const ATS = () => {
   const fileInputRef = useRef(null);
 
 
-  const API_URL = 'http://localhost:5000/candidates';
+  const API_URL = `${BASE_API_URL}/candidates`;
 // Pehle: const API_URL = 'http://localhost:5000/candidates';
 // const API_URL = 'http://localhost:5000/api/candidates';  
-  const JOBS_URL = 'http://localhost:5000/jobs';
-  const BULK_UPLOAD_URL = 'http://localhost:5000/candidates/bulk-upload';
+  const JOBS_URL = `${BASE_API_URL}/jobs`;
+  const BULK_UPLOAD_URL = `${BASE_API_URL}/candidates/bulk-upload`;
 
   const [candidates, setCandidates] = useState([]);
   const [jobs, setJobs] = useState([]);
