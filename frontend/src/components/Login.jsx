@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import API_URL from '../config';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -13,28 +14,74 @@ const Login = () => {
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  // Email validation
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  // Password validation - min 8 chars, uppercase, lowercase, number, special char
+  const validatePassword = (password) => {
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+    const hasMinLength = password.length >= 8;
+
+    return {
+      valid: hasUppercase && hasLowercase && hasNumber && hasSpecial && hasMinLength,
+      hasUppercase,
+      hasLowercase,
+      hasNumber,
+      hasSpecial,
+      hasMinLength
+    };
+  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     if (error) setError('');
+    if (fieldErrors[e.target.name]) {
+      setFieldErrors({ ...fieldErrors, [e.target.name]: '' });
+    }
   };
 
-  // ✅ Updated HandleSubmit as per your request
+  // ✅ Updated HandleSubmit with validation
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setFieldErrors({});
 
     const { email, password } = formData;
+    const errors = {};
 
     if (!email || !password) {
       setError('Please fill in all fields.');
       return;
     }
 
+    // Validate email format
+    if (!validateEmail(email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+
+    // Validate password
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      errors.password = 'Password must be 8+ chars with uppercase, lowercase, number & special character';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
     try {
       // ✅ Using the specific URL and Logic you provided
-      const res = await fetch('http://localhost:5000/api/login', { 
+      const res = await fetch(`${API_URL}/api/login`, { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -92,8 +139,9 @@ const Login = () => {
               value={formData.email}
               onChange={handleChange}
               placeholder="admin@company.com" 
-              className="w-full mt-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+              className={`w-full mt-1 p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all ${fieldErrors.email ? 'border-red-500' : 'border-gray-300'}`}
             />
+            {fieldErrors.email && <p className="text-red-500 text-sm mt-1">{fieldErrors.email}</p>}
           </div>
 
           <div>
@@ -105,8 +153,9 @@ const Login = () => {
               value={formData.password}
               onChange={handleChange}
               placeholder="••••••••" 
-              className="w-full mt-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+              className={`w-full mt-1 p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all ${fieldErrors.password ? 'border-red-500' : 'border-gray-300'}`}
             />
+            {fieldErrors.password && <p className="text-red-500 text-sm mt-1">{fieldErrors.password}</p>}
           </div>
           
           <button 
