@@ -180,8 +180,32 @@ const diskUpload = multer({ dest: 'uploads/' });
 // --- 1. GET ALL CANDIDATES ---
 router.get('/', async (req, res) => {
     try {
-        const candidates = await Candidate.find().sort({ createdAt: -1 });
-        res.status(200).json(candidates);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 50; // Default 50 per page
+        const skip = (page - 1) * limit;
+
+        // Fetch paginated candidates
+        const candidates = await Candidate.find()
+            .sort({ createdAt: -1 })
+            .limit(limit)
+            .skip(skip)
+            .lean(); // Use .lean() for faster read-only queries
+
+        // Get total count for pagination metadata
+        const totalCount = await Candidate.countDocuments();
+        const totalPages = Math.ceil(totalCount / limit);
+
+        res.status(200).json({
+            success: true,
+            data: candidates,
+            pagination: {
+                currentPage: page,
+                totalPages: totalPages,
+                totalCount: totalCount,
+                pageSize: limit,
+                hasMore: page < totalPages
+            }
+        });
     } catch (err) {
         res.status(500).json({ message: "Error fetching candidates", error: err.message });
     }

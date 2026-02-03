@@ -23,10 +23,22 @@ const Dashboard = () => {
     const fetchCandidates = async () => {
       try {
         const response = await fetch('http://localhost:5000/candidates'); 
-        const data = await response.json();
-        setCandidates(data);
+        const result = await response.json();
+        
+        // Handle both paginated and raw array formats
+        let candidatesData = [];
+        if (result.success && result.data && Array.isArray(result.data)) {
+          candidatesData = result.data;
+        } else if (Array.isArray(result)) {
+          candidatesData = result;
+        } else {
+          candidatesData = [];
+        }
+        
+        setCandidates(candidatesData);
       } catch (error) {
         console.error("Error fetching data:", error);
+        setCandidates([]);
       }
     };
     fetchCandidates();

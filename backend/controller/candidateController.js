@@ -67,7 +67,7 @@ exports.bulkUploadCandidates = async (req, res) => {
                 row.eachCell((cell) => {
                     const text = cellToString(cell.value).toLowerCase();
                     if (!text) return;
-                    if (text.includes('name') || text.includes('email') || text.includes('contact') || text.includes('position') || text.includes('company') || text.includes('ctc') || text.includes('client')) score++;
+                    if (text.includes('name') || text.includes('email') || text.includes('contact') || text.includes('position') || text.includes('company') || text.includes('ctc') || text.includes('client') || text.includes('experience') || text.includes('notice')) score++;
                 });
                 scores[r] = score;
             }
@@ -82,6 +82,50 @@ exports.bulkUploadCandidates = async (req, res) => {
         // Status keywords that sometimes appear in Client column
         const statusKeywords = ['interested', 'not interested', 'notselected', 'not selected', 'scheduled', 'interview', 'selected', 'rejected','notgraduate','not graduate'];
 
+        // Helper: build column scores using sample rows (for smart remapping)
+        const buildColumnScores = (worksheet, headerRowNum) => {
+            const maxCols = Math.max(worksheet.columnCount, 30);
+            const startRow = headerRowNum + 1;
+            const endRow = Math.min(worksheet.rowCount, headerRowNum + 80);
+
+            const emailRe = /@/;
+            const phoneRe = /\d{7,15}/;
+            const expRe = /(yr|yrs|year|years|month|months|mos)\b/i;
+            const ctcRe = /(lpa|k\b|\bpa\b|per annum|p\.a\b|lakh|lakhs|₹|rs\b|ctc)\b/i;
+            const noticeRe = /(notice|np|days|months|immediate|serving)/i;
+            const statusRe = /(interested|not interested|notselected|not selected|scheduled|interview|selected|rejected|not graduate|notgraduate)/i;
+            const companyRe = /(pvt|ltd|llp|inc|corp|co\.?\b|company|technologies|solutions|systems|services)/i;
+            const positionRe = /(developer|engineer|manager|analyst|associate|designer|lead|intern|tester|qa|sales|marketing|hr|recruiter|accountant|architect|consultant|executive|officer|admin|support)/i;
+
+            const colScores = {};
+            for (let c = 1; c <= maxCols; c++) {
+                colScores[c] = { email: 0, phone: 0, name: 0, exp: 0, ctc: 0, status: 0, notice: 0, company: 0, position: 0 };
+            }
+
+            for (let r = startRow; r <= endRow; r++) {
+                const row = worksheet.getRow(r);
+                for (let c = 1; c <= maxCols; c++) {
+                    const raw = row.getCell(c) ? cellToString(row.getCell(c).value) : '';
+                    if (!raw) continue;
+                    const low = raw.toLowerCase();
+                    if (emailRe.test(raw)) colScores[c].email += 1;
+                    if (phoneRe.test(raw)) colScores[c].phone += 1;
+                    if (expRe.test(raw)) colScores[c].exp += 1;
+                    if (ctcRe.test(raw)) colScores[c].ctc += 1;
+                    if (noticeRe.test(low)) colScores[c].notice += 1;
+                    if (statusRe.test(low)) colScores[c].status += 1;
+                    if (companyRe.test(low)) colScores[c].company += 1;
+                    if (positionRe.test(low)) colScores[c].position += 1;
+                    // name heuristic: letters + spaces, not email, not mostly numbers
+                    if (!emailRe.test(raw) && /[a-zA-Z]/.test(raw) && raw.replace(/[^0-9]/g, '').length < raw.length - 2) {
+                        colScores[c].name += 1;
+                    }
+                }
+            }
+
+            return { colScores, maxCols };
+        };
+
         // Iterate sheets
         workbook.eachSheet((worksheet, sheetId) => {
             try {
@@ -93,81 +137,113 @@ exports.bulkUploadCandidates = async (req, res) => {
                 headerRow.eachCell((cell, colNumber) => {
                     const header = cellToString(cell.value).toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
                     if (!header) return;
-                    if (header.includes('name')) headerMap['name'] = colNumber;
-                    else if (header.includes('email')) headerMap['email'] = colNumber;
-                    else if (header.includes('spoc') || header.includes('contact person') || header.includes('spoc name')) headerMap['spoc'] = colNumber;
-                    else if (header.includes('contact') || header.includes('mobile') || header.includes('phone')) headerMap['contact'] = colNumber;
-                    else if (header.includes('location') || header.includes('city') || header.includes('place')) headerMap['location'] = colNumber;
-                    else if (header.includes('position') || header.includes('role') || header.includes('designation')) headerMap['position'] = colNumber;
-                    else if (header.includes('company') || header.includes('company name') || header.includes('current company')) headerMap['company'] = colNumber;
-                    else if (header.includes('experience') || header.includes('exp')) headerMap['experience'] = colNumber;
-                    else if (header.includes('expected') || header.includes('expectedctc') || header.includes('expected ctc') || header.includes('expected salary')) headerMap['expectedCtc'] = colNumber;
-                    else if (header === 'ctc' || header.includes('current ctc') || header.includes('salary')) headerMap['ctc'] = colNumber;
-                    else if (header.includes('notice')) headerMap['notice'] = colNumber;
-                    else if (header.includes('client') || header.includes('client name')) headerMap['client'] = colNumber;
-                    else if (header.includes('fls')) headerMap['flsStatus'] = colNumber;
-                    else if (header.includes('date')) headerMap['date'] = colNumber;
-                    else if (header.includes('source')) headerMap['source'] = colNumber;
-                    else if (header.includes('status') || header.includes('feedback')) headerMap['status'] = colNumber;
+                    
+                    // Exact matches first (higher priority)
+                    if (header === 'name') headerMap['name'] = colNumber;
+                    else if (header === 'email' || header === 'emailid') headerMap['email'] = colNumber;
+                    else if (header === 'position' || header === 'designation') headerMap['position'] = colNumber;
+                    else if (header === 'companyname' || header === 'company name' || header === 'company') headerMap['company'] = colNumber;
+                    else if (header === 'experience') headerMap['experience'] = colNumber;
+                    else if (header === 'ctc') headerMap['ctc'] = colNumber;
+                    else if (header === 'expected ctc' || header === 'expectedctc') headerMap['expectedCtc'] = colNumber;
+                    else if (header === 'notice period' || header === 'noticeperiod') headerMap['notice'] = colNumber;
+                    else if (header === 'contact no' || header === 'contactno' || header === 'contact') headerMap['contact'] = colNumber;
+                    else if (header === 'location') headerMap['location'] = colNumber;
+                    else if (header === 'date') headerMap['date'] = colNumber;
+                    else if (header === 'client') headerMap['client'] = colNumber;
+                    else if (header === 'spoc') headerMap['spoc'] = colNumber;
+                    else if (header === 'status') headerMap['status'] = colNumber;
+                    else if (header === 'source' || header === 'source of cv') headerMap['source'] = colNumber;
+                    else if (header === 'fls' || header.includes('fls')) headerMap['flsStatus'] = colNumber;
+                    // Partial matches (lower priority)
+                    else if (!headerMap['name'] && (header.includes('candidate') || header.includes('name'))) headerMap['name'] = colNumber;
+                    else if (!headerMap['email'] && header.includes('email')) headerMap['email'] = colNumber;
+                    else if (!headerMap['contact'] && (header.includes('mobile') || header.includes('phone') || header.includes('contact'))) headerMap['contact'] = colNumber;
+                    else if (!headerMap['position'] && (header.includes('role') || header.includes('profile') || header.includes('job'))) headerMap['position'] = colNumber;
+                    else if (!headerMap['company'] && (header.includes('organisation') || header.includes('organization') || header.includes('employer') || header.includes('current company'))) headerMap['company'] = colNumber;
+                    else if (!headerMap['experience'] && (header.includes('exp') || header.includes('work exp'))) headerMap['experience'] = colNumber;
+                    else if (!headerMap['expectedCtc'] && (header.includes('expected') || header.includes('ectc'))) headerMap['expectedCtc'] = colNumber;
+                    else if (!headerMap['notice'] && (header.includes('notice') || header === 'np')) headerMap['notice'] = colNumber;
+                    else if (!headerMap['location'] && (header.includes('city') || header.includes('place'))) headerMap['location'] = colNumber;
+                    else if (!headerMap['spoc'] && (header.includes('contact person') || header.includes('spoc'))) headerMap['spoc'] = colNumber;
+                    else if (!headerMap['status'] && header.includes('feedback')) headerMap['status'] = colNumber;
                 });
 
+                const { colScores, maxCols } = buildColumnScores(worksheet, headerRowNum);
+
+                const pickBestColumn = (scoreKey, excludeCols = new Set()) => {
+                    let bestCol = null;
+                    let bestScore = 0;
+                    for (let c = 1; c <= maxCols; c++) {
+                        if (excludeCols.has(c)) continue;
+                        const score = colScores[c][scoreKey] || 0;
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestCol = c;
+                        }
+                    }
+                    return bestCol ? { col: bestCol, score: bestScore } : null;
+                };
+
+                const ensureHeader = (key, scoreKey, minScore = 2) => {
+                    const assigned = new Set(Object.values(headerMap).filter(Boolean));
+                    const currentCol = headerMap[key];
+                    const currentScore = currentCol ? (colScores[currentCol]?.[scoreKey] || 0) : 0;
+                    const best = pickBestColumn(scoreKey, new Set([...assigned].filter(c => c !== currentCol)));
+
+                    if (!currentCol || currentScore < minScore) {
+                        if (best && best.score >= minScore) headerMap[key] = best.col;
+                    } else if (best && best.score > currentScore * 1.5) {
+                        headerMap[key] = best.col;
+                    }
+                };
+
+                // Always validate/adjust mapping using profiling (with higher thresholds)
+                ensureHeader('email', 'email', 3);
+                ensureHeader('contact', 'phone', 3);
+                ensureHeader('name', 'name', 3);
+                ensureHeader('company', 'company', 2);
+                ensureHeader('experience', 'exp', 2);
+                ensureHeader('ctc', 'ctc', 2);
+                ensureHeader('expectedCtc', 'ctc', 1);
+                ensureHeader('notice', 'notice', 2);
+                ensureHeader('position', 'position', 2);
+                ensureHeader('status', 'status', 1);
+
+                const swapIf = (keyA, keyB, scoreA, scoreB) => {
+                    const colA = headerMap[keyA];
+                    const colB = headerMap[keyB];
+                    if (!colA || !colB) return;
+                    const aScoreA = colScores[colA]?.[scoreA] || 0;
+                    const aScoreB = colScores[colA]?.[scoreB] || 0;
+                    const bScoreA = colScores[colB]?.[scoreA] || 0;
+                    const bScoreB = colScores[colB]?.[scoreB] || 0;
+                    if (aScoreB > aScoreA && bScoreA > bScoreB) {
+                        headerMap[keyA] = colB;
+                        headerMap[keyB] = colA;
+                    }
+                };
+
+                swapIf('name', 'company', 'name', 'company');
+                swapIf('experience', 'ctc', 'exp', 'ctc');
+                swapIf('notice', 'expectedCtc', 'notice', 'ctc');
+                swapIf('company', 'expectedCtc', 'company', 'ctc');
+
+                console.log(`--- 📋 Final headerMap for sheet ${sheetId}:`, JSON.stringify(headerMap, null, 2));
+                console.log(`--- 📊 Column Assignments:`);
+                console.log(`  Name column: ${headerMap['name'] || 'NOT FOUND'}`);
+                console.log(`  Company column: ${headerMap['company'] || 'NOT FOUND'}`);
+                console.log(`  Position column: ${headerMap['position'] || 'NOT FOUND'}`);
+                console.log(`  Experience column: ${headerMap['experience'] || 'NOT FOUND'}`);
+                console.log(`  CTC column: ${headerMap['ctc'] || 'NOT FOUND'}`);
+                console.log(`  Expected CTC column: ${headerMap['expectedCtc'] || 'NOT FOUND'}`);
+                console.log(`  Notice Period column: ${headerMap['notice'] || 'NOT FOUND'}`);
+                console.log(`  Email column: ${headerMap['email'] || 'NOT FOUND'}`);
+                console.log(`  Contact column: ${headerMap['contact'] || 'NOT FOUND'}`);
+
                 if (!headerMap['name']) {
-                    console.log(`--- ⚠️ Sheet ${sheetId} header row ${headerRowNum} didn't contain a Name header - attempting column profiling fallback`);
-
-                    // Column profiling fallback: analyze next N rows to guess which column is name/email/contact
-                    const colScores = {};
-                    const maxCols = Math.max(worksheet.columnCount, Object.keys(headerMap).length + 10);
-                    const startRow = headerRowNum + 1;
-                    const endRow = Math.min(worksheet.rowCount, headerRowNum + 80);
-
-                    const emailRe = /@/;
-                    const phoneRe = /\d{7,15}/;
-                    const expRe = /(yr|yrs|year|years|month|months)/i;
-                    const ctcRe = /(lpa|k\b|\bpa\b|per annum|p\.a\b|lakh|lakhs|₹|rs\b)/i;
-                    const statusRe = /(interested|not interested|notselected|not selected|scheduled|interview|selected|rejected|not graduate|notgraduate)/i;
-
-                    for (let c = 1; c <= maxCols; c++) colScores[c] = { email:0, phone:0, name:0, exp:0, ctc:0, status:0 };
-
-                    for (let r = startRow; r <= endRow; r++) {
-                        const row = worksheet.getRow(r);
-                        for (let c = 1; c <= maxCols; c++) {
-                            const raw = row.getCell(c) ? cellToString(row.getCell(c).value) : '';
-                            if (!raw) continue;
-                            const low = raw.toLowerCase();
-                            if (emailRe.test(raw)) colScores[c].email += 1;
-                            if (phoneRe.test(raw)) colScores[c].phone += 1;
-                            if (expRe.test(raw)) colScores[c].exp += 1;
-                            if (ctcRe.test(raw)) colScores[c].ctc += 1;
-                            if (statusRe.test(low)) colScores[c].status += 1;
-                            // name heuristic: contains letters and spaces, not email, not mostly numbers
-                            if (!emailRe.test(raw) && /[a-zA-Z]/.test(raw) && raw.replace(/[^0-9]/g,'').length < raw.length - 2) colScores[c].name += 1;
-                        }
-                    }
-
-                    // choose best columns if headerMap missing
-                    const assignIfMissing = (key, scoreKey) => {
-                        if (headerMap[key]) return;
-                        let bestCol = null, bestScore = 0;
-                        for (let col in colScores) {
-                            if (colScores[col][scoreKey] > bestScore) { bestScore = colScores[col][scoreKey]; bestCol = Number(col); }
-                        }
-                        if (bestCol && bestScore > 0) headerMap[key] = bestCol;
-                    };
-
-                    assignIfMissing('email','email');
-                    assignIfMissing('contact','phone');
-                    assignIfMissing('position','name');
-                    assignIfMissing('name','name');
-                    assignIfMissing('ctc','ctc');
-                    assignIfMissing('experience','exp');
-                    assignIfMissing('status','status');
-
-                    console.log(`--- 🔎 Fallback headerMap for sheet ${sheetId}:`, headerMap);
-
-                    if (!headerMap['name']) {
-                        console.log(`--- ⚠️ Sheet ${sheetId} still missing Name mapping after profiling — skipping sheet`);
-                        return;
-                    }
+                    console.log(`--- ⚠️ Sheet ${sheetId} still missing Name mapping after profiling — skipping sheet`);
+                    return;
                 }
 
                 // Process rows starting after headerRowNum
@@ -197,6 +273,20 @@ exports.bulkUploadCandidates = async (req, res) => {
                     let statusVal = getData('status');
                     let companyVal = getData('company');
                     let expectedCtcVal = getData('expectedCtc') || getData('expected');
+
+                    // Debug first 3 rows to see data extraction
+                    if (r <= headerRowNum + 3) {
+                        console.log(`\n--- 🔍 ROW ${r} Data Extraction (sheet ${sheetId}):`);
+                        console.log(`  Raw Name from col ${headerMap['name']}: "${rawName}"`);
+                        console.log(`  Company from col ${headerMap['company']}: "${companyVal}"`);
+                        console.log(`  Position from col ${headerMap['position']}: "${getData('position')}"`);
+                        console.log(`  Experience from col ${headerMap['experience']}: "${getData('experience')}"`);
+                        console.log(`  CTC from col ${headerMap['ctc']}: "${getData('ctc')}"`);
+                        console.log(`  Expected CTC from col ${headerMap['expectedCtc']}: "${expectedCtcVal}"`);
+                        console.log(`  Notice from col ${headerMap['notice']}: "${getData('notice')}"`);
+                        console.log(`  Email from col ${headerMap['email']}: "${emailVal}"`);
+                        console.log(`  Contact from col ${headerMap['contact']}: "${contactVal}"`);
+                    }
 
                     // If client cell contains status keywords, move it to status
                     const clientNorm = clientVal.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
@@ -258,6 +348,18 @@ exports.bulkUploadCandidates = async (req, res) => {
                         status: statusVal || 'Applied',
                         source: getData('source') || 'Excel Import'
                     };
+
+                    // Log final candidate data for first 3 records
+                    if (finalResults.length < 3) {
+                        console.log(`\n--- ✅ FINAL Candidate Data #${finalResults.length + 1}:`);
+                        console.log(`  Name: "${candidateData.name}"`);
+                        console.log(`  Company: "${candidateData.companyName}"`);
+                        console.log(`  Position: "${candidateData.position}"`);
+                        console.log(`  Experience: "${candidateData.experience}"`);
+                        console.log(`  CTC: "${candidateData.ctc}"`);
+                        console.log(`  Expected CTC: "${candidateData.expectedCtc}"`);
+                        console.log(`  Notice Period: "${candidateData.noticePeriod}"`);
+                    }
 
                     finalResults.push(candidateData);
                 }

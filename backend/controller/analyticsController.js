@@ -67,8 +67,8 @@ exports.getAnalytics = async (req, res) => {
       avgTimeToHire: timeToHire[0]?.avgDays || 0
     });
 
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error fetching analytics" });
-  }
+  } catch (err) {
+  console.log("Database Error:", err); // Ye Render logs mein dikhega
+  res.status(500).json({ message: "Error fetching analytics", error: err.message });
+}    
 };

@@ -76,4 +76,10 @@ const CandidateSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+// 🚀 Performance Indexes for faster queries
+CandidateSchema.index({ createdAt: -1 }); // For sorting by date
+CandidateSchema.index({ email: 1 }); // For email lookups
+CandidateSchema.index({ position: 1 }); // For filtering by position
+CandidateSchema.index({ name: 'text', email: 'text', position: 'text' }); // Full-text search
+
 module.exports = mongoose.model('Candidate', CandidateSchema);

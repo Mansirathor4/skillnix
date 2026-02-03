@@ -31,6 +31,9 @@ const ATS = () => {
   const [parsedResults, setParsedResults] = useState([]); 
   const [showPreview, setShowPreview] = useState(false); 
   const [isAutoParsing, setIsAutoParsing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
  const initialFormState = {
     srNo: '', date: new Date().toISOString().split('T')[0], location: '', position: '',
@@ -40,20 +43,45 @@ const ATS = () => {
 };
   const [formData, setFormData] = useState(initialFormState);
 
-  // --- Data Fetch Logic ---
-  const fetchData = async () => {
+  // --- Data Fetch Logic (with pagination) ---
+  const fetchData = async (page = 1) => {
     try {
-      const res = await fetch(API_URL);
-      const data = await res.json();
-      setCandidates(data);
+      setIsLoadingMore(page > 1);
+      const res = await fetch(`${API_URL}?page=${page}&limit=50`);
+      const response = await res.json();
+      
+      // Handle both paginated and raw array formats
+      let candidatesData = [];
+      let pages = 1;
+      
+      if (response.success && response.data && Array.isArray(response.data)) {
+        candidatesData = response.data;
+        pages = response.pagination?.totalPages || 1;
+        setTotalPages(pages);
+      } else if (Array.isArray(response)) {
+        candidatesData = response;
+        setTotalPages(1);
+      }
+      
+      if (page === 1) {
+        setCandidates(candidatesData);
+      } else {
+        setCandidates(prev => [...prev, ...candidatesData]);
+      }
+      setCurrentPage(page);
 
       const jobRes = await fetch(`${JOBS_URL}?isTemplate=false`);
       const jobData = await jobRes.json();
       setJobs(jobData);
-    } catch (error) { console.error("Error fetching data:", error); }
+    } catch (error) { 
+      console.error("Error fetching data:", error); 
+      setCandidates([]);
+    } finally {
+      setIsLoadingMore(false);
+    }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(1); }, []);
 
 
 const handleBulkUpload = async (event) => {
@@ -541,10 +569,23 @@ const handleAddCandidate = async (e) => {
         </table>
       </div>             
 
-      {/* Sentinel for lazy-loading more rows */}
+      {/* Sentinel for lazy-loading more rows + pagination */}
       <div ref={loadMoreRef} className="w-full text-center py-6 text-sm text-gray-500">
-        {visibleCount < filteredCandidates.length ? 'Loading more candidates...' : 'All candidates loaded.'}
+        {visibleCount < filteredCandidates.length ? 'Loading more candidates...' : 'All candidates on this page loaded.'}
       </div>
+      
+      {/* Pagination Button for loading next page */}
+      {currentPage < totalPages && (
+        <div className="w-full text-center py-4">
+          <button 
+            onClick={() => fetchData(currentPage + 1)}
+            disabled={isLoadingMore}
+            className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-50 transition"
+          >
+            {isLoadingMore ? 'Loading...' : `Load More (Page ${currentPage}/${totalPages})`}
+          </button>
+        </div>
+      )}
 
 {showModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
