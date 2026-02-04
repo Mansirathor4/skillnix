@@ -28,7 +28,7 @@
 // };
 
 // // 2. Update Status with History Tracking
-exports.bulkUploadCandidates = async (req, res) => {
+/* exports.bulkUploadCandidates = async (req, res) => {
     console.log("--- 🚀 STEP 1: API Hit & File Received ---");
     if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded." });
 
@@ -38,11 +38,44 @@ exports.bulkUploadCandidates = async (req, res) => {
         await workbook.xlsx.readFile(filePath);
         console.log("--- ✅ STEP 2: Excel File Read Success ---");
 
-        const finalResults = [];
+        // Send headers for streaming response
+        res.setHeader('Content-Type', 'application/x-ndjson');
+        res.setHeader('Transfer-Encoding', 'chunked');
+
+        const STREAM_BATCH_SIZE = 100; // Stream every 100 records
+        const DB_BATCH_SIZE = 1000; // Insert 1000 records at a time
+        let dbBatch = [];
+        let streamBatch = [];
         let totalRowsInFile = 0;
+        let validRows = 0;
         let duplicateSkipped = 0;
+        let successCount = 0;
+        let dbDuplicates = 0;
+        const failedRecords = [];
         const seenEmails = new Set();
         const seenContacts = new Set();
+        const flushBatch = async () => {
+            if (dbBatch.length === 0) return;
+            console.log(`--- 📤 Inserting batch of ${dbBatch.length} records (Total so far: ${successCount}) ---`);
+            try {
+                const result = await Candidate.insertMany(dbBatch, { ordered: false });
+                successCount += result.length;
+                console.log(`--- ✅ Batch inserted successfully ---`);
+            } catch (bulkErr) {
+                if (bulkErr.writeErrors) {
+                    const batchSuccess = dbBatch.length - bulkErr.writeErrors.length;
+                    successCount += batchSuccess;
+                    bulkErr.writeErrors.forEach(e => {
+                        if (e.code === 11000) dbDuplicates++;
+                        else failedRecords.push({ reason: e.errmsg || 'Insert error' });
+                    });
+                } else {
+                    failedRecords.push({ reason: bulkErr.message || 'Batch insert error' });
+                }
+            } finally {
+                dbBatch = [];
+            }
+        };
 
         // Helper: normalize cell value to string
         const cellToString = (cell) => {
@@ -126,8 +159,10 @@ exports.bulkUploadCandidates = async (req, res) => {
             return { colScores, maxCols };
         };
 
-        // Iterate sheets
-        workbook.eachSheet((worksheet, sheetId) => {
+        // Iterate sheets (sync loop so we can await batch flushes)
+        for (let sheetIndex = 0; sheetIndex < workbook.worksheets.length; sheetIndex++) {
+            const worksheet = workbook.worksheets[sheetIndex];
+            const sheetId = sheetIndex + 1;
             try {
                 const headerRowNum = detectHeaderRow(worksheet);
                 const headerMap = {};
@@ -185,49 +220,52 @@ exports.bulkUploadCandidates = async (req, res) => {
                     return bestCol ? { col: bestCol, score: bestScore } : null;
                 };
 
-                const ensureHeader = (key, scoreKey, minScore = 2) => {
-                    const assigned = new Set(Object.values(headerMap).filter(Boolean));
-                    const currentCol = headerMap[key];
-                    const currentScore = currentCol ? (colScores[currentCol]?.[scoreKey] || 0) : 0;
-                    const best = pickBestColumn(scoreKey, new Set([...assigned].filter(c => c !== currentCol)));
+                // ONLY do auto-correction if NO user mapping was provided
+                if (!userMapping || Object.keys(userMapping).length === 0) {
+                    const ensureHeader = (key, scoreKey, minScore = 2) => {
+                        const assigned = new Set(Object.values(headerMap).filter(Boolean));
+                        const currentCol = headerMap[key];
+                        const currentScore = currentCol ? (colScores[currentCol]?.[scoreKey] || 0) : 0;
+                        const best = pickBestColumn(scoreKey, new Set([...assigned].filter(c => c !== currentCol)));
 
-                    if (!currentCol || currentScore < minScore) {
-                        if (best && best.score >= minScore) headerMap[key] = best.col;
-                    } else if (best && best.score > currentScore * 1.5) {
-                        headerMap[key] = best.col;
-                    }
-                };
+                        if (!currentCol || currentScore < minScore) {
+                            if (best && best.score >= minScore) headerMap[key] = best.col;
+                        } else if (best && best.score > currentScore * 1.5) {
+                            headerMap[key] = best.col;
+                        }
+                    };
 
-                // Always validate/adjust mapping using profiling (with higher thresholds)
-                ensureHeader('email', 'email', 3);
-                ensureHeader('contact', 'phone', 3);
-                ensureHeader('name', 'name', 3);
-                ensureHeader('company', 'company', 2);
-                ensureHeader('experience', 'exp', 2);
-                ensureHeader('ctc', 'ctc', 2);
-                ensureHeader('expectedCtc', 'ctc', 1);
-                ensureHeader('notice', 'notice', 2);
-                ensureHeader('position', 'position', 2);
-                ensureHeader('status', 'status', 1);
+                    // Only auto-enhance if no user mapping
+                    ensureHeader('email', 'email', 3);
+                    ensureHeader('contact', 'phone', 3);
+                    ensureHeader('name', 'name', 3);
+                    ensureHeader('company', 'company', 2);
+                    ensureHeader('experience', 'exp', 2);
+                    ensureHeader('ctc', 'ctc', 2);
+                    ensureHeader('expectedCtc', 'ctc', 1);
+                    ensureHeader('notice', 'notice', 2);
+                    ensureHeader('position', 'position', 2);
+                    ensureHeader('status', 'status', 1);
 
-                const swapIf = (keyA, keyB, scoreA, scoreB) => {
-                    const colA = headerMap[keyA];
-                    const colB = headerMap[keyB];
-                    if (!colA || !colB) return;
-                    const aScoreA = colScores[colA]?.[scoreA] || 0;
-                    const aScoreB = colScores[colA]?.[scoreB] || 0;
-                    const bScoreA = colScores[colB]?.[scoreA] || 0;
-                    const bScoreB = colScores[colB]?.[scoreB] || 0;
-                    if (aScoreB > aScoreA && bScoreA > bScoreB) {
-                        headerMap[keyA] = colB;
-                        headerMap[keyB] = colA;
-                    }
-                };
+                    const swapIf = (keyA, keyB, scoreA, scoreB) => {
+                        const colA = headerMap[keyA];
+                        const colB = headerMap[keyB];
+                        if (!colA || !colB) return;
+                        const aScoreA = colScores[colA]?.[scoreA] || 0;
+                        const aScoreB = colScores[colA]?.[scoreB] || 0;
+                        const bScoreA = colScores[colB]?.[scoreA] || 0;
+                        const bScoreB = colScores[colB]?.[scoreB] || 0;
+                        if (aScoreB > aScoreA && bScoreA > bScoreB) {
+                            headerMap[keyA] = colB;
+                            headerMap[keyB] = colA;
+                        }
+                    };
 
-                swapIf('name', 'company', 'name', 'company');
-                swapIf('experience', 'ctc', 'exp', 'ctc');
-                swapIf('notice', 'expectedCtc', 'notice', 'ctc');
-                swapIf('company', 'expectedCtc', 'company', 'ctc');
+                    swapIf('name', 'company', 'name', 'company');
+                    swapIf('experience', 'ctc', 'exp', 'ctc');
+                    swapIf('notice', 'expectedCtc', 'notice', 'ctc');
+                    swapIf('company', 'expectedCtc', 'company', 'ctc');
+                }
 
                 console.log(`--- 📋 Final headerMap for sheet ${sheetId}:`, JSON.stringify(headerMap, null, 2));
                 console.log(`--- 📊 Column Assignments:`);
@@ -350,8 +388,8 @@ exports.bulkUploadCandidates = async (req, res) => {
                     };
 
                     // Log final candidate data for first 3 records
-                    if (finalResults.length < 3) {
-                        console.log(`\n--- ✅ FINAL Candidate Data #${finalResults.length + 1}:`);
+                    if (validRows < 3) {
+                        console.log(`\n--- ✅ FINAL Candidate Data #${validRows + 1}:`);
                         console.log(`  Name: "${candidateData.name}"`);
                         console.log(`  Company: "${candidateData.companyName}"`);
                         console.log(`  Position: "${candidateData.position}"`);
@@ -361,64 +399,83 @@ exports.bulkUploadCandidates = async (req, res) => {
                         console.log(`  Notice Period: "${candidateData.noticePeriod}"`);
                     }
 
-                    finalResults.push(candidateData);
+                    dbBatch.push(candidateData);
+                    streamBatch.push(candidateData);
+                    validRows++;
+
+                    // Stream data every 100 records
+                    if (streamBatch.length >= STREAM_BATCH_SIZE) {
+                        const chunk = {
+                            type: 'progress',
+                            records: streamBatch,
+                            processed: validRows,
+                            total: totalRowsInFile
+                        };
+                        res.write(JSON.stringify(chunk) + '\n');
+                        console.log(`--- 📤 Streamed ${validRows}/${totalRowsInFile} records ---`);
+                        streamBatch = [];
+                    }
+
+                    // Insert in DB in batches
+                    if (dbBatch.length >= DB_BATCH_SIZE) {
+                        await flushBatch();
+                    }
                 }
             } catch (sheetErr) {
                 console.error(`--- ❌ Error processing sheet ${sheetId}:`, sheetErr.message);
             }
-        });
+        }
 
-        console.log(`--- 📦 Total Valid Unique Rows: ${finalResults.length} out of ${totalRowsInFile} data rows ---`);
+        // Flush any remaining stream records
+        if (streamBatch.length > 0) {
+            const chunk = {
+                type: 'progress',
+                records: streamBatch,
+                processed: validRows,
+                total: totalRowsInFile
+            };
+            res.write(JSON.stringify(chunk) + '\n');
+            console.log(`--- 📤 Streamed ${validRows}/${totalRowsInFile} records ---`);
+            streamBatch = [];
+        }
+
+        // Flush any remaining DB records
+        await flushBatch();
+
+        console.log(`--- 📦 Total Valid Unique Rows: ${validRows} out of ${totalRowsInFile} data rows ---`);
         console.log(`--- ⏭️ Duplicates Skipped: ${duplicateSkipped} ---`);
+        console.log(`--- ✅ Currently Saved to DB: ${successCount} ---`);
 
-        // Database Sync
-        if (finalResults.length > 0) {
-            let successCount = 0;
-            let dbDuplicates = 0;
-            const failedRecords = [];
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
-            for (let doc of finalResults) {
-                try {
-                    await Candidate.findOneAndUpdate(
-                        { email: doc.email },
-                        { $set: doc },
-                        { upsert: true, new: true }
-                    );
-                    successCount++;
-                } catch (dbErr) {
-                    if (dbErr.code === 11000) {
-                        console.log(`--- ⏭️ DB Duplicate for ${doc.email}, skipping ---`);
-                        dbDuplicates++;
-                        failedRecords.push({ name: doc.name, email: doc.email, reason: 'Already exists' });
-                    } else {
-                        console.error(`--- ❌ Error saving ${doc.name}:`, dbErr.message);
-                        failedRecords.push({ name: doc.name, email: doc.email, reason: dbErr.message });
-                    }
-                }
-            }
-
-            console.log('--- 🎉 STEP 4: Database Write Complete ---');
-            console.log('Successfully Saved:', successCount);
-            console.log('DB Duplicates Skipped:', dbDuplicates);
-
-            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-
-            const allCandidates = await Candidate.find({}).sort({ createdAt: -1 });
-
-            return res.status(200).json({
+        if (validRows > 0) {
+            // Send final completion message
+            const finalMsg = {
+                type: 'complete',
                 success: true,
-                message: `✅ Successfully processed ${successCount} candidates! (${duplicateSkipped + dbDuplicates} duplicates skipped)`,
+                message: `✅ All ${validRows} records streamed and mapped!`,
                 processed: successCount,
                 duplicatesInFile: duplicateSkipped,
                 duplicatesInDB: dbDuplicates,
-                totalProcessed: finalResults.length,
+                totalProcessed: validRows,
                 totalInFile: totalRowsInFile,
-                failedRecords: failedRecords.length > 0 ? failedRecords : [],
-                allCandidates: allCandidates
-            });
+                failedRecords: failedRecords.length > 0 ? failedRecords : []
+            };
+            res.write(JSON.stringify(finalMsg) + '\n');
+            res.end();
+
+            return;
         } else {
-            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-            return res.status(400).json({ success: false, message: 'No valid candidates found. Check headers.', totalInFile: totalRowsInFile, duplicatesSkipped: duplicateSkipped });
+            const errorMsg = {
+                type: 'error',
+                success: false,
+                message: 'No valid candidates found. Check headers.',
+                totalInFile: totalRowsInFile,
+                duplicatesSkipped: duplicateSkipped
+            };
+            res.write(JSON.stringify(errorMsg) + '\n');
+            res.end();
+            return;
         }
 
     } catch (err) {
@@ -596,6 +653,8 @@ exports.bulkUploadCandidates = async (req, res) => {
 //         res.status(500).json({ success: false, message: error.message });
 //     }
 // };
+
+*/
 
 const Candidate = require('../models/Candidate');
 const fs = require('fs');
@@ -1185,206 +1244,235 @@ const ExcelJS = require('exceljs');
 exports.bulkUploadCandidates = async (req, res) => {
     console.log("--- 🚀 STEP 1: API Hit & File Received ---");
     if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded." });
-    
+
     const filePath = req.file.path;
+    let userMapping = null;
+
     try {
+        if (req.body.columnMapping) {
+            userMapping = JSON.parse(req.body.columnMapping);
+        }
+
         const workbook = new ExcelJS.Workbook();
-        await workbook.xlsx.readFile(filePath);
+        const ext = (req.file.originalname || '').toLowerCase();
+        if (ext.endsWith('.csv')) {
+            await workbook.csv.readFile(filePath);
+        } else {
+            await workbook.xlsx.readFile(filePath);
+        }
         console.log("--- ✅ STEP 2: Excel File Read Success ---");
 
-        const finalResults = [];
+        // Streaming response setup
+        res.setHeader('Content-Type', 'application/x-ndjson');
+        res.setHeader('Transfer-Encoding', 'chunked');
+
+        const STREAM_BATCH_SIZE = 100;
+        const DB_BATCH_SIZE = 1000;
+        let streamBatch = [];
+        let dbBatch = [];
         let totalRowsInFile = 0;
+        let validRows = 0;
         let duplicateSkipped = 0;
+        let successCount = 0;
+        let dbDuplicates = 0;
+        const failedRecords = [];
         const seenEmails = new Set();
         const seenContacts = new Set();
 
-        // 1. Iterate all sheets (some exports split data across multiple sheets)
-        workbook.eachSheet((worksheet, sheetId) => {
+        const flushDbBatch = async () => {
+            if (dbBatch.length === 0) return;
+            try {
+                const result = await Candidate.insertMany(dbBatch, { ordered: false });
+                successCount += result.length;
+            } catch (bulkErr) {
+                if (bulkErr.writeErrors) {
+                    const batchSuccess = dbBatch.length - bulkErr.writeErrors.length;
+                    successCount += batchSuccess;
+                    bulkErr.writeErrors.forEach(e => {
+                        if (e.code === 11000) dbDuplicates++;
+                        else failedRecords.push({ reason: e.errmsg || 'Insert error' });
+                    });
+                } else {
+                    failedRecords.push({ reason: bulkErr.message || 'Batch insert error' });
+                }
+            } finally {
+                dbBatch = [];
+            }
+        };
+
+        const flushStream = () => {
+            if (streamBatch.length === 0) return;
+            res.write(JSON.stringify({
+                type: 'progress',
+                records: streamBatch,
+                processed: validRows,
+                total: totalRowsInFile
+            }) + '\n');
+            streamBatch = [];
+        };
+
+        const cellToString = (cell) => {
+            if (cell === null || cell === undefined) return "";
+            if (typeof cell === 'object') {
+                if (cell.text) return String(cell.text).trim();
+                if (cell.richText && Array.isArray(cell.richText)) return cell.richText.map(r => r.text || '').join('').trim();
+                if (cell.result) return String(cell.result).trim();
+                if (cell instanceof Date) return cell.toISOString().split('T')[0];
+                return String(cell).trim();
+            }
+            return String(cell).trim();
+        };
+
+        const detectHeaderRow = (worksheet) => {
+            const scores = {};
+            for (let r = 1; r <= Math.min(6, worksheet.rowCount); r++) {
+                let score = 0;
+                const row = worksheet.getRow(r);
+                row.eachCell((cell) => {
+                    const text = cellToString(cell.value).toLowerCase();
+                    if (!text) return;
+                    if (text.includes('name') || text.includes('email') || text.includes('contact') || text.includes('position') || text.includes('company') || text.includes('ctc') || text.includes('client') || text.includes('experience') || text.includes('notice')) score++;
+                });
+                scores[r] = score;
+            }
+            let best = 1, bestScore = -1;
+            for (const k of Object.keys(scores)) {
+                if (scores[k] > bestScore) { best = Number(k); bestScore = scores[k]; }
+            }
+            return best;
+        };
+
+        for (let sheetIndex = 0; sheetIndex < workbook.worksheets.length; sheetIndex++) {
+            const worksheet = workbook.worksheets[sheetIndex];
+            const sheetId = sheetIndex + 1;
+
             try {
                 const headerMap = {};
-                const firstRow = worksheet.getRow(1);
-                firstRow.eachCell((cell, colNumber) => {
-                    const header = cell.value ? cell.value.toString().toLowerCase().trim() : "";
-                    if (header.includes("name")) headerMap["name"] = colNumber;
-                    else if (header.includes("email")) headerMap["email"] = colNumber;
-                    else if (header.includes("contact") || header.includes("mobile") || header.includes("phone")) headerMap["contact"] = colNumber;
-                    else if (header.includes("location") || header.includes("city")) headerMap["location"] = colNumber;
-                    else if (header.includes("position") || header.includes("role")) headerMap["position"] = colNumber;
-                    else if (header.includes("company")) headerMap["company"] = colNumber;
-                    else if (header.includes("experience") || header.includes("exp")) headerMap["experience"] = colNumber;
-                    else if (header === "ctc" || header.includes("salary")) headerMap["ctc"] = colNumber;
-                    else if (header.includes("notice")) headerMap["notice"] = colNumber;
-                    else if (header.includes("client")) headerMap["client"] = colNumber;
-                    else if (header.includes("fls")) headerMap["flsStatus"] = colNumber;
-                    else if (header.includes("date")) headerMap["date"] = colNumber;
-                });
+                const headerRowNum = detectHeaderRow(worksheet);
 
-                // If this sheet doesn't have a name column, skip it
-                if (!headerMap["name"]) {
-                    console.log(`--- ⚠️ Sheet ${sheetId} skipped: no Name header`);
-                    return;
+                if (userMapping && Object.keys(userMapping).length > 0) {
+                    console.log("--- ✅ Using USER MAPPING:", userMapping);
+                    Object.entries(userMapping).forEach(([excelIndex, fieldName]) => {
+                        if (!fieldName) return;
+                        const colNum = parseInt(excelIndex, 10) + 1;
+                        headerMap[fieldName] = colNum;
+                        console.log(`   📍 Mapped Excel Col ${parseInt(excelIndex) + 1} → ${fieldName}`);
+                    });
+                    console.log("--- 🗺️ Final headerMap:", headerMap);
+                } else {
+                    console.log("--- ⚠️ No user mapping, using AUTO-DETECTION");
+                    const headerRow = worksheet.getRow(headerRowNum);
+                    headerRow.eachCell((cell, colNumber) => {
+                        const header = cellToString(cell.value).toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+                        if (header === 'name') headerMap['name'] = colNumber;
+                        else if (header === 'email' || header === 'emailid') headerMap['email'] = colNumber;
+                        else if (header === 'contact no' || header === 'contactno' || header === 'contact') headerMap['contact'] = colNumber;
+                        else if (header === 'position' || header === 'designation') headerMap['position'] = colNumber;
+                        else if (header === 'companyname' || header === 'company name' || header === 'company') headerMap['companyName'] = colNumber;
+                        else if (header === 'experience') headerMap['experience'] = colNumber;
+                        else if (header === 'ctc') headerMap['ctc'] = colNumber;
+                        else if (header === 'expected ctc' || header === 'expectedctc') headerMap['expectedCtc'] = colNumber;
+                        else if (header === 'notice period' || header === 'noticeperiod') headerMap['noticePeriod'] = colNumber;
+                        else if (header === 'location') headerMap['location'] = colNumber;
+                        else if (header === 'date') headerMap['date'] = colNumber;
+                        else if (header === 'client') headerMap['client'] = colNumber;
+                        else if (header === 'spoc') headerMap['spoc'] = colNumber;
+                        else if (header === 'status') headerMap['status'] = colNumber;
+                        else if (header === 'source' || header === 'source of cv') headerMap['source'] = colNumber;
+                        else if (header === 'fls' || header.includes('fls')) headerMap['fls'] = colNumber;
+                    });
                 }
 
-                // Process rows in this sheet
-                worksheet.eachRow((row, rowNumber) => {
-                    if (rowNumber === 1) return; // skip header
+                if (!headerMap['name']) {
+                    console.log(`--- ⚠️ Sheet ${sheetId} skipped: no Name mapping`);
+                    continue;
+                }
 
+                for (let r = headerRowNum + 1; r <= worksheet.rowCount; r++) {
+                    const row = worksheet.getRow(r);
                     totalRowsInFile++;
-                    const nameIdx = headerMap["name"];
-                    const nameCell = row.getCell(nameIdx).value;
 
-                    // Skip header-like rows inside data
-                    if (nameCell && String(nameCell).toLowerCase().trim() === "name") {
+                    const rawName = cellToString(row.getCell(headerMap['name']).value || '');
+                    if (!rawName || rawName.toLowerCase().trim() === 'name') {
                         duplicateSkipped++;
-                        return;
+                        continue;
                     }
 
-                    if (nameCell && String(nameCell).trim()) {
-                        const getData = (key) => {
-                            const idx = headerMap[key];
-                            if (idx && idx > 0) {
-                                const val = row.getCell(idx).value;
-                                return val !== null && val !== undefined ? String(val).trim() : "";
-                            }
-                            return "";
-                        };
+                    const getData = (key) => {
+                        const idx = headerMap[key];
+                        if (idx && idx > 0) return cellToString(row.getCell(idx).value || '');
+                        return '';
+                    };
 
-                        let email = getData("email");
-                        let contact = getData("contact");
+                    let emailVal = getData('email');
+                    let contactVal = getData('contact');
+                    if (!emailVal || !emailVal.includes('@')) emailVal = `user_sheet${sheetId}_row${r}_${Date.now()}@ats.local`;
+                    if (!contactVal) contactVal = `PHONE_sheet${sheetId}_row${r}`;
 
-                        if (!email || !email.includes("@")) {
-                            email = `user_sheet${sheetId}_row${rowNumber}_${Date.now()}@ats.local`;
-                        }
-
-                        if (!contact) {
-                            contact = `PHONE_sheet${sheetId}_row${rowNumber}`;
-                        }
-
-                        // Skip duplicates within the batch
-                        if (seenEmails.has(email.toLowerCase())) {
-                            duplicateSkipped++;
-                            return;
-                        }
-                        if (seenContacts.has(contact)) {
-                            duplicateSkipped++;
-                            return;
-                        }
-
-                        seenEmails.add(email.toLowerCase());
-                        seenContacts.add(contact);
-
-                        // Date handling
-                        let finalDate = new Date().toISOString().split('T')[0];
-
-                        const candidateData = {
-                            name: String(nameCell).trim(),
-                            email: email.toLowerCase(),
-                            contact: contact,
-                            location: getData("location") || 'N/A',
-                            position: getData("position") || 'N/A',
-                            companyName: getData("company") || 'N/A',
-                            experience: getData("experience") || '0',
-                            ctc: getData("ctc") || '0',
-                            noticePeriod: getData("notice") || 'N/A',
-                            client: getData("client") || 'N/A',
-                            fls: getData("flsStatus") || 'N/A',
-                            date: finalDate,
-                            status: 'Applied'
-                        };
-
-                        finalResults.push(candidateData);
+                    if (seenEmails.has(emailVal.toLowerCase()) || seenContacts.has(contactVal)) {
+                        duplicateSkipped++;
+                        continue;
                     }
-                });
+                    seenEmails.add(emailVal.toLowerCase());
+                    seenContacts.add(contactVal);
+
+                    let finalDate = new Date().toISOString().split('T')[0];
+                    const rawDate = row.getCell(headerMap['date'] || 0).value;
+                    if (rawDate instanceof Date) finalDate = rawDate.toISOString().split('T')[0];
+
+                    const candidateData = {
+                        name: String(rawName).trim(),
+                        email: String(emailVal).trim().toLowerCase(),
+                        contact: String(contactVal).trim(),
+                        location: getData('location') || 'N/A',
+                        position: getData('position') || 'N/A',
+                        companyName: getData('companyName') || getData('company') || 'N/A',
+                        experience: getData('experience') || '0',
+                        ctc: getData('ctc') || '',
+                        expectedCtc: getData('expectedCtc') || '',
+                        noticePeriod: getData('noticePeriod') || 'N/A',
+                        status: getData('status') || 'Applied',
+                        client: getData('client') || 'N/A',
+                        spoc: getData('spoc') || '',
+                        fls: getData('fls') || 'N/A',
+                        source: getData('source') || 'Excel Import',
+                        date: finalDate
+                    };
+
+                    streamBatch.push(candidateData);
+                    dbBatch.push(candidateData);
+                    validRows++;
+
+                    if (streamBatch.length >= STREAM_BATCH_SIZE) flushStream();
+                    if (dbBatch.length >= DB_BATCH_SIZE) await flushDbBatch();
+                }
             } catch (sheetErr) {
                 console.error(`--- ❌ Error processing sheet ${sheetId}:`, sheetErr.message);
             }
-        });
-
-        console.log(`--- 📦 Total Valid Unique Rows: ${finalResults.length} out of ${totalRowsInFile} data rows ---`);
-        console.log(`--- ⏭️ Duplicates Skipped: ${duplicateSkipped} ---`);
-
-        // 3. Database Sync using BulkWrite
-        if (finalResults.length > 0) {
-            try {
-                // ✅ SKIP ON ERROR MODE - Insert individually so duplicates don't block entire upload
-                let successCount = 0;
-                let dbDuplicates = 0;
-                const failedRecords = [];
-
-                for (let doc of finalResults) {
-                    try {
-                        // Try to update if exists, insert if not
-                        const result = await Candidate.findOneAndUpdate(
-                            { email: doc.email },
-                            { $set: doc },
-                            { upsert: true, new: true }
-                        );
-                        successCount++;
-                    } catch (dbErr) {
-                        // ✅ If duplicate error, log and continue (don't break)
-                        if (dbErr.code === 11000) {
-                            console.log(`--- ⏭️ DB Duplicate for ${doc.email}, skipping ---`);
-                            dbDuplicates++;
-                            failedRecords.push({
-                                name: doc.name,
-                                email: doc.email,
-                                reason: "Already exists in database"
-                            });
-                        } else {
-                            console.error(`--- ❌ Error saving ${doc.name}:`, dbErr.message);
-                            failedRecords.push({
-                                name: doc.name,
-                                email: doc.email,
-                                reason: dbErr.message
-                            });
-                        }
-                    }
-                }
-
-                console.log("--- 🎉 STEP 4: Database Write Complete ---");
-                console.log("Successfully Saved:", successCount);
-                console.log("DB Duplicates Skipped:", dbDuplicates);
-                console.log("Total Processed:", finalResults.length);
-
-                if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-
-                // ✅ FETCH ALL CANDIDATES TO RETURN
-                const allCandidates = await Candidate.find({}).sort({ createdAt: -1 });
-
-                return res.status(200).json({ 
-                    success: true, 
-                    message: `✅ Successfully processed ${successCount} candidates! (${duplicateSkipped + dbDuplicates} duplicates skipped)`,
-                    processed: successCount,
-                    duplicatesInFile: duplicateSkipped,
-                    duplicatesInDB: dbDuplicates,
-                    totalProcessed: finalResults.length,
-                    totalInFile: totalRowsInFile,
-                    failedRecords: failedRecords.length > 0 ? failedRecords : [],
-                    allCandidates: allCandidates
-                });
-
-            } catch (dbErr) {
-                console.error("--- ❌ Database Error ---", dbErr.message);
-                if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-                return res.status(500).json({ 
-                    success: false, 
-                    message: `Database error: ${dbErr.message}` 
-                });
-            }
-        } else {
-            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-            return res.status(400).json({ 
-                success: false, 
-                message: "No valid candidates found. All rows were either headers or duplicates.",
-                totalInFile: totalRowsInFile,
-                duplicatesSkipped: duplicateSkipped
-            });
         }
 
-    } catch (err) {
+        flushStream();
+        await flushDbBatch();
+
+        res.write(JSON.stringify({
+            type: 'complete',
+            totalProcessed: validRows,
+            duplicatesInFile: duplicateSkipped,
+            duplicatesInDB: dbDuplicates
+        }) + '\n');
+        res.end();
+
         if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+
+    } catch (err) {
         console.error("--- ‼️ FATAL ERROR ---", err.message);
-        res.status(500).json({ success: false, message: `Error: ${err.message}` });
+        if (res.headersSent) {
+            res.write(JSON.stringify({ type: 'error', message: err.message }) + '\n');
+            res.end();
+        } else {
+            res.status(500).json({ success: false, message: `Error: ${err.message}` });
+        }
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     }
 };
 

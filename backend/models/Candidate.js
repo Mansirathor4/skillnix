@@ -78,7 +78,7 @@ const CandidateSchema = new mongoose.Schema({
 
 // 🚀 Performance Indexes for faster queries
 CandidateSchema.index({ createdAt: -1 }); // For sorting by date
-CandidateSchema.index({ email: 1 }); // For email lookups
+// Note: email index is automatically created by unique: true constraint above
 CandidateSchema.index({ position: 1 }); // For filtering by position
 CandidateSchema.index({ name: 'text', email: 'text', position: 'text' }); // Full-text search
 

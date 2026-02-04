@@ -15,6 +15,7 @@ import ATS from './components/ATS';
 import Recruitment from './components/Recruitment';
 import Homeunder from './components/Homeunder';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
+import CandidateSearch from './components/CandidateSearch';
 
 // ✅ STEP 1: Jobs Component Import karein
 import Jobs from './pages/Jobs'; 
@@ -37,6 +38,7 @@ function App() {
           {/* ✅ STEP 3: Recruitment Page ka Route add karein */}
           <Route path="/recruitment" element={<Recruitment />} />
           <Route path="/analytics" element={<AnalyticsDashboard />} />
+          <Route path="/candidate-search" element={<CandidateSearch />} />
 
         </Routes>
       </div>

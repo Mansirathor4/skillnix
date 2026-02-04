@@ -10,6 +10,7 @@ import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import { useNavigate } from 'react-router-dom';
 import BASE_API_URL from '../config';
+import ColumnMapper from './ColumnMapper';
 
 
 const ATS = () => {
@@ -35,6 +36,12 @@ const ATS = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isHeaderLoading, setIsHeaderLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [showColumnMapper, setShowColumnMapper] = useState(false);
+  const [excelHeaders, setExcelHeaders] = useState([]);
+  const [columnMapping, setColumnMapping] = useState(null);
+  const [pendingFile, setPendingFile] = useState(null);
 
  const initialFormState = {
     srNo: '', date: new Date().toISOString().split('T')[0], location: '', position: '',
@@ -44,12 +51,27 @@ const ATS = () => {
 };
   const [formData, setFormData] = useState(initialFormState);
 
-  // --- Data Fetch Logic (with pagination) ---
-  const fetchData = async (page = 1) => {
+  // --- Data Fetch Logic (with pagination + server-side search) ---
+  const fetchData = async (page = 1, options = {}) => {
     try {
-      setIsLoadingMore(page > 1);
-      const res = await fetch(`${API_URL}?page=${page}&limit=50`);
+      const search = (options.search || '').trim();
+      const position = (options.position || '').trim();
+      const isSearch = Boolean(search || position);
+      const limit = isSearch ? 5000 : 'all';
+
+      setIsLoadingMore(page > 1 && !isSearch);
+
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit)
+      });
+      if (search) params.append('search', search);
+      if (position) params.append('position', position);
+
+      const res = await fetch(`${API_URL}?${params.toString()}`);
       const response = await res.json();
+      console.log('🔍 API Response - isSearch:', isSearch, 'limit:', limit);
+      console.log('🔍 API Response received:', response);
       
       // Handle both paginated and raw array formats
       let candidatesData = [];
@@ -58,10 +80,12 @@ const ATS = () => {
       if (response.success && response.data && Array.isArray(response.data)) {
         candidatesData = response.data;
         pages = response.pagination?.totalPages || 1;
-        setTotalPages(pages);
+        setTotalPages(isSearch ? 1 : pages);
+        console.log('✅ Fetched', candidatesData.length, 'candidates, totalPages:', pages);
       } else if (Array.isArray(response)) {
         candidatesData = response;
         setTotalPages(1);
+        console.log('✅ Fetched', candidatesData.length, 'candidates (direct array)');
       }
       
       if (page === 1) {
@@ -69,7 +93,7 @@ const ATS = () => {
       } else {
         setCandidates(prev => [...prev, ...candidatesData]);
       }
-      setCurrentPage(page);
+      setCurrentPage(isSearch ? 1 : page);
 
       const jobRes = await fetch(`${JOBS_URL}?isTemplate=false`);
       const jobData = await jobRes.json();
@@ -82,68 +106,121 @@ const ATS = () => {
     }
   };
 
-  useEffect(() => { fetchData(1); }, []);
+  useEffect(() => {
+    fetchData(1, { search: searchQuery, position: filterJob });
+  }, [searchQuery, filterJob]);
 
 
 const handleBulkUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
-    const uploadData = new FormData();
-    uploadData.append('file', file);
+    try {
+    setIsHeaderLoading(true);
+        // Send file to backend to extract headers
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const res = await fetch(`${BASE_API_URL}/candidates/extract-headers`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            alert("❌ Error reading Excel: " + (data.message || 'Unknown error'));
+            event.target.value = null;
+            return;
+        }
+
+        setExcelHeaders(data.headers);
+        setPendingFile(file);
+        setShowColumnMapper(true);
+        event.target.value = null;
+    } catch (error) {
+        console.error("Error reading Excel:", error);
+        alert("❌ Error reading Excel file. Please try again.");
+        event.target.value = null;
+      } finally {
+        setIsHeaderLoading(false);
+    }
+};
+
+const handleUploadWithMapping = async (mapping) => {
+    if (!pendingFile) return;
+    const file = pendingFile;
 
     try {
-        const response = await axios.post(BULK_UPLOAD_URL, uploadData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
+        setIsUploading(true);
+        console.log("📤 Sending mapping to backend:", mapping);
+        const uploadData = new FormData();
+        uploadData.append('file', file);
+        uploadData.append('columnMapping', JSON.stringify(mapping));
+
+        console.log("📦 FormData prepared with file and mapping");
+        
+        // Use fetch to handle streaming response
+        const response = await fetch(`${BULK_UPLOAD_URL}`, {
+            method: 'POST',
+            body: uploadData,
+            headers: { 'Accept': 'application/x-ndjson' }
         });
         
-        if (response.data.success) {
-            // ✅ Show detailed success message
-            let successMsg = `✅ Upload Successful!\n\n`;
-            successMsg += `Successfully Saved: ${response.data.processed}\n`;
-            
-            if (response.data.duplicatesInFile > 0 || response.data.duplicatesInDB > 0) {
-                successMsg += `Duplicates Skipped: ${response.data.duplicatesInFile + response.data.duplicatesInDB}\n`;
+        if (!response.ok) {
+            throw new Error('Upload failed');
+        }
+
+        // Read streaming response
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let streamedData = [];
+        let isComplete = false;
+
+        while (!isComplete) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const text = decoder.decode(value, { stream: true });
+            const lines = text.split('\n').filter(l => l.trim());
+
+            for (const line of lines) {
+                try {
+                    const msg = JSON.parse(line);
+
+                    if (msg.type === 'progress') {
+                        // Display streamed data progressively
+                        streamedData = streamedData.concat(msg.records);
+                        setCandidates(streamedData);
+                        console.log(`✅ Showing ${msg.processed}/${msg.total} records as they arrive...`);
+                    } else if (msg.type === 'complete') {
+                      // All data complete
+                      isComplete = true;
+                      alert(`✅ Upload Complete!\n\nTotal: ${msg.totalProcessed} candidates\nDuplicates: ${msg.duplicatesInFile + msg.duplicatesInDB}`);
+                      setIsUploading(false);
+                      fetchData(1, { search: searchQuery, position: filterJob });
+                    } else if (msg.type === 'error') {
+                        alert(`❌ Error: ${msg.message}`);
+                        setIsUploading(false);
+                    }
+                } catch (e) {
+                    console.error('Parse error:', e);
+                }
             }
-            
-            if (response.data.totalInFile) {
-                successMsg += `Total Rows in File: ${response.data.totalInFile}`;
-            }
-            
-            alert(successMsg);
-            
-            // ✅ REAL-TIME UPDATE
-            if (response.data.allCandidates && response.data.allCandidates.length > 0) {
-                setCandidates(response.data.allCandidates);
-                console.log("✅ Updated candidates list with:", response.data.allCandidates.length, "records");
-            } else {
-                fetchData();
-            }
-        } else {
-            alert("❌ Upload Failed: " + response.data.message);
         }
     } catch (error) {
         console.error("Bulk Upload Error:", error);
-        
-        let errorMsg = "Something went wrong";
-        
-        if (error.response?.data?.message) {
-            errorMsg = error.response.data.message;
-        } else if (error.response?.status === 400) {
-            errorMsg = "Invalid data format. Please check your Excel file.";
-        } else if (error.response?.status === 500) {
-            errorMsg = "Server error. Please try again later.";
-        }
-        
-        alert("❌ Error: " + errorMsg);
+        alert("❌ Error: " + error.message);
+        setIsUploading(false);
     } finally {
-        event.target.value = null;
+        setShowColumnMapper(false);
+        setPendingFile(null);
+        setColumnMapping(null);
     }
 };
 
 // Iske niche ka ye useParsing wala part MATH HATANA, isse rehne dena
 const { selectedIds, isParsing, toggleSelection, selectAll, handleBulkParse } = useParsing(async () => {
-    await fetchData();
+  await fetchData(1, { search: searchQuery, position: filterJob });
     const res = await fetch(API_URL);
     const latestData = await res.json();
     const newlyParsed = latestData.filter(c => selectedIds.includes(c._id));
@@ -166,6 +243,7 @@ const { selectedIds, isParsing, toggleSelection, selectAll, handleBulkParse } = 
 
   // ✅ BULK WHATSAPP: Delay ke saath multiple windows open karega
   const handleBulkWhatsApp = () => {
+            setIsUploading(false);
     const selected = candidates.filter(c => selectedIds.includes(c._id));
     const contacts = selected.map(c => c.contact).filter(p => p);
 
@@ -212,8 +290,8 @@ const handleDelete = async (id) => {
             });
 
             if (response.ok) {
-                alert("Deleted successfully!");
-                fetchData(); 
+              alert("Deleted successfully!");
+              fetchData(1, { search: searchQuery, position: filterJob }); 
             } else {
                 const errorData = await response.json();
                 alert(`Error: ${errorData.message}`);
@@ -334,7 +412,7 @@ const handleAddCandidate = async (e) => {
       setShowModal(false);
       setEditId(null);
       setFormData(initialFormState);
-      fetchData(); // Dashboard/List refresh karne ke liye
+      fetchData(1, { search: searchQuery, position: filterJob }); // Dashboard/List refresh karne ke liye
     } else {
       const errJson = await response.json();
       alert("❌ Error: " + errJson.message);
@@ -350,45 +428,46 @@ const handleAddCandidate = async (e) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus })
     });
-    fetchData();
+    fetchData(1, { search: searchQuery, position: filterJob });
   };
 
   const filteredCandidates = candidates.filter(c => {
     const matchesSearch = 
       c.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.position?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.email?.toLowerCase().includes(searchQuery.toLowerCase());
+      c.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.location?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesJob = filterJob ? c.position === filterJob : true;
     return matchesSearch && matchesJob;
   });
+  console.log('📋 filteredCandidates count:', filteredCandidates.length);
 
-  // --- Client-side incremental rendering (lazy load rows) ---
-  const CHUNK_SIZE = 50; // render 50 rows at a time
-  const [visibleCount, setVisibleCount] = useState(CHUNK_SIZE);
-
-  // Reset visibleCount when filter/search changes
-  useEffect(() => {
-    setVisibleCount(CHUNK_SIZE);
-  }, [searchQuery, filterJob, candidates]);
-
-  // Memoize the slice to avoid re-computing on unrelated renders
-  const visibleCandidates = useMemo(() => filteredCandidates.slice(0, visibleCount), [filteredCandidates, visibleCount]);
+  // Show ALL candidates (no pagination on initial load)
+  const visibleCandidates = useMemo(() => filteredCandidates, [filteredCandidates]);
 
   const loadMoreRef = useRef(null);
+  const isAutoPagingRef = useRef(false);
+
+  useEffect(() => {
+    isAutoPagingRef.current = false;
+  }, [currentPage, searchQuery, filterJob]);
   useEffect(() => {
     if (!loadMoreRef.current) return;
 
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          setVisibleCount(prev => Math.min(filteredCandidates.length, prev + CHUNK_SIZE));
+        if (!entry.isIntersecting) return;
+
+        if (currentPage < totalPages && !isLoadingMore && !isAutoPagingRef.current) {
+          isAutoPagingRef.current = true;
+          fetchData(currentPage + 1);
         }
       });
     }, { root: null, rootMargin: '200px', threshold: 0.1 });
 
     observer.observe(loadMoreRef.current);
     return () => observer.disconnect();
-  }, [filteredCandidates.length]);
+  }, [filteredCandidates.length, currentPage, totalPages, isLoadingMore]);
 
   const isAllSelected = filteredCandidates.length > 0 && selectedIds.length === filteredCandidates.length;
 
@@ -398,11 +477,46 @@ const handleAddCandidate = async (e) => {
     'CTC', 'Expected CTC', 'Notice period', 'Status', 'Client',
     'SPOC', 'Source of CV'
   ];
+  const stickyColWidths = {
+    checkbox: 60,
+    actions: 90,
+    srNo: 80,
+    resume: 90,
+    tools: 120
+  };
+  const stickyLeftOffsets = [
+    stickyColWidths.checkbox,
+    stickyColWidths.checkbox + stickyColWidths.actions,
+    stickyColWidths.checkbox + stickyColWidths.actions + stickyColWidths.srNo,
+    stickyColWidths.checkbox + stickyColWidths.actions + stickyColWidths.srNo + stickyColWidths.resume
+  ];
 
   const statusOptions = ['Applied', 'Screening', 'Interview', 'Offer', 'Hired', 'Rejected'];
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 font-sans text-slate-900">
+      
+      {/* COLUMN MAPPER MODAL */}
+      {showColumnMapper && (
+        <ColumnMapper 
+          excelHeaders={excelHeaders}
+          onMapComplete={handleUploadWithMapping}
+          onClose={() => {
+            setShowColumnMapper(false);
+            setPendingFile(null);
+          }}
+        />
+      )}
+
+      {isUploading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm text-center">
+            <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+            <h3 className="text-lg font-bold text-slate-800">Uploading candidates…</h3>
+            <p className="mt-2 text-sm text-slate-500">Please wait. This can take a few minutes for large files.</p>
+          </div>
+        </div>
+      )}
       
       {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
@@ -446,12 +560,20 @@ const handleAddCandidate = async (e) => {
             <BarChart3 size={18} /> View Reports
           </button>
 
+          <button 
+            onClick={() => navigate('/candidate-search')} 
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg font-bold hover:bg-indigo-200 transition shadow-sm border border-indigo-200"
+          >
+            <Search size={18} /> Advanced Search
+          </button>
+
 {/* NEW: BULK IMPORT BUTTON */}
           <button 
             onClick={() => fileInputRef.current.click()} 
-            className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-emerald-700 shadow-lg transition"
+            disabled={isHeaderLoading}
+            className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-emerald-700 shadow-lg transition disabled:opacity-60"
           >
-            <Upload size={20} /> Bulk Import (CSV)
+            <Upload size={20} /> {isHeaderLoading ? 'Processing file...' : 'Bulk Import (CSV)'}
           </button>
 
           <button onClick={() => { setEditId(null); setFormData(initialFormState); setShowModal(true); }} className="flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-slate-800 shadow-lg transition">
@@ -493,7 +615,7 @@ const handleAddCandidate = async (e) => {
       <div className="flex flex-col md:flex-row gap-4 mb-8">
         <div className="flex-1 bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4 focus-within:ring-2 ring-indigo-500/20 transition-all">
           <Search className="text-gray-400" size={20} />
-          <input type="text" placeholder="Search by name, email or position..." className="flex-1 outline-none text-gray-700 bg-transparent" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+          <input type="text" placeholder="Search by name, email, position or location..." className="flex-1 outline-none text-gray-700 bg-transparent" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
         </div>
 
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3 min-w-[250px]">
@@ -510,35 +632,53 @@ const handleAddCandidate = async (e) => {
         <table className="w-full text-left border-collapse min-w-[2000px]">
           <thead>
             <tr className="bg-emerald-50 text-slate-700 border-b-2 border-emerald-100">
-              <th className="p-4 w-[60px]">
+              <th className="p-4 w-[60px] min-w-[60px] sticky left-0 z-20 bg-emerald-50 border-r border-emerald-100">
                 <div onClick={() => selectAll(filteredCandidates.map(c => c._id))} className="cursor-pointer">
                   {isAllSelected ? <CheckSquare size={22} className="text-indigo-600" /> : <Square size={22} className="text-slate-400" />}
                 </div>
               </th>
-              {tableHeaders.map((header) => (<th key={header} className="p-4 text-sm font-bold whitespace-nowrap">{header}</th>))}
+              {tableHeaders.map((header, idx) => (
+                <th
+                  key={header}
+                  className={`p-4 text-sm font-bold whitespace-nowrap${idx < 4 ? ' sticky z-20 bg-emerald-50 border-r border-emerald-100' : ''}`}
+                  style={
+                    idx === 0
+                      ? { left: `${stickyLeftOffsets[idx]}px`, width: `${stickyColWidths.actions}px`, minWidth: `${stickyColWidths.actions}px` }
+                      : idx === 1
+                      ? { left: `${stickyLeftOffsets[idx]}px`, width: `${stickyColWidths.srNo}px`, minWidth: `${stickyColWidths.srNo}px` }
+                      : idx === 2
+                      ? { left: `${stickyLeftOffsets[idx]}px`, width: `${stickyColWidths.resume}px`, minWidth: `${stickyColWidths.resume}px` }
+                      : idx === 3
+                      ? { left: `${stickyLeftOffsets[idx]}px`, width: `${stickyColWidths.tools}px`, minWidth: `${stickyColWidths.tools}px` }
+                      : undefined
+                  }
+                >
+                  {header}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {visibleCandidates.map((candidate,index) => (
               <tr key={candidate._id} className="border-b hover:bg-slate-50 transition">
-                <td className="p-4 text-center">
+                <td className="p-4 text-center sticky left-0 z-10 bg-white border-r border-slate-200" style={{ width: `${stickyColWidths.checkbox}px`, minWidth: `${stickyColWidths.checkbox}px` }}>
                   <div onClick={() => toggleSelection(candidate._id)} className="cursor-pointer">
                     {selectedIds.includes(candidate._id) ? <CheckSquare className="text-indigo-600" size={20} /> : <Square className="text-slate-300" size={20} />}
                   </div>
                 </td>
-                <td className="p-4">
+                <td className="p-4 sticky z-10 bg-white border-r border-slate-200" style={{ left: `${stickyLeftOffsets[0]}px`, width: `${stickyColWidths.actions}px`, minWidth: `${stickyColWidths.actions}px` }}>
                   <div className="flex gap-2">
                     <button onClick={() => handleEdit(candidate)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"><Edit size={16} /></button>
                     <button onClick={() => handleDelete(candidate._id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded"><Trash2 size={16} /></button>
                   </div>
                 </td>
-                <td className="p-4 font-medium">{index + 1}</td>
-                <td className="p-4">
+                <td className="p-4 font-medium sticky z-10 bg-white border-r border-slate-200" style={{ left: `${stickyLeftOffsets[1]}px`, width: `${stickyColWidths.srNo}px`, minWidth: `${stickyColWidths.srNo}px` }}>{index + 1}</td>
+                <td className="p-4 sticky z-10 bg-white border-r border-slate-200" style={{ left: `${stickyLeftOffsets[2]}px`, width: `${stickyColWidths.resume}px`, minWidth: `${stickyColWidths.resume}px` }}>
                    {candidate.resume && (
                      <a href={candidate.resume} target="_blank" rel="noreferrer" className="inline-flex p-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"><FileText size={18} /></a>
                    )}
                 </td>
-                <td className="p-4">
+                <td className="p-4 sticky z-10 bg-white border-r border-slate-200" style={{ left: `${stickyLeftOffsets[3]}px`, width: `${stickyColWidths.tools}px`, minWidth: `${stickyColWidths.tools}px` }}>
                   <div className="flex gap-2">
                     <button onClick={() => sendEmail(candidate.email)} className="p-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200" title="Send Email"><Mail size={16}/></button>
                     <button onClick={() => sendWhatsApp(candidate.contact)} className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200" title="WhatsApp Message"><MessageCircle size={16}/></button>
@@ -572,7 +712,7 @@ const handleAddCandidate = async (e) => {
 
       {/* Sentinel for lazy-loading more rows + pagination */}
       <div ref={loadMoreRef} className="w-full text-center py-6 text-sm text-gray-500">
-        {visibleCount < filteredCandidates.length ? 'Loading more candidates...' : 'All candidates on this page loaded.'}
+        All candidates loaded.
       </div>
       
       {/* Pagination Button for loading next page */}

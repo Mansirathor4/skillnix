@@ -18,10 +18,17 @@ const JDTemplate = require('./models/JDTemplate');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Set timeout for large file uploads (5 minutes)
+app.use((req, res, next) => {
+  req.setTimeout(600000); // 10 minutes
+  res.setTimeout(600000);
+  next();
+});
+
 // Middleware
-app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(cors({ origin: ["http://localhost:5173", "http://localhost:5174"] }));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 // --- ROUTES REDIRECTION ---
 app.use('/api/analytics', analyticsRoutes);
@@ -38,6 +45,20 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 mongoose.connect(process.env.MONGODB_URL || 'mongodb://127.0.0.1:27017/allinone')
   .then(() => console.log('✅ MongoDB Connected'))
   .catch(err => console.error('❌ Mongo Error:', err));
+
+// Drop legacy unique index on contact if it still exists
+mongoose.connection.once('open', async () => {
+  try {
+    const indexes = await Candidate.collection.indexes();
+    const hasContactIndex = indexes.find(idx => idx.name === 'contact_1');
+    if (hasContactIndex) {
+      await Candidate.collection.dropIndex('contact_1');
+      console.log('✅ Dropped legacy contact_1 index');
+    }
+  } catch (err) {
+    console.warn('⚠️ Failed to drop contact_1 index:', err.message);
+  }
+});
 
 // --- USER SCHEMA ---
 const userSchema = new mongoose.Schema({
@@ -93,7 +114,11 @@ app.post('/jobs', async (req, res) => {
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+const server = app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
+// Ye do lines wait time badha dengi taaki Network Error na aaye
+server.timeout = 600000; 
+server.keepAliveTimeout = 61000;
 
 /* ========== DIAGNOSTICS ========== */
 app.get('/diagnostics', async (req, res) => {
