@@ -23,7 +23,7 @@ import Jobs from './pages/Jobs';
 function App() {
   return (
     <Router>
-      <div className="bg-gray-50 min-h-screen">
+      <div className="min-h-screen" style={{backgroundColor: 'var(--bg-secondary)'}}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />

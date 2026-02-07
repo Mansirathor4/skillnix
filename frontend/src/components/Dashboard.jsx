@@ -55,26 +55,29 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans">
+    <div className="min-h-screen font-sans" style={{backgroundColor: 'var(--neutral-50)'}}>
       
       {/* --- TOP NAVIGATION --- */}
-      <nav className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-50 shadow-sm">
-        <div className="flex items-center gap-3">
-          <img src="/atslogo.jpg" alt="PeopleConnectHR" className="h-16 w-auto" />
-          <span className="text-2xl font-bold text-slate-800">PeopleConnectHR</span>
+      <nav className="px-6 py-0 flex justify-between items-center sticky top-0 z-50 shadow-sm" style={{backgroundColor: 'var(--bg-primary)', borderBottom: '1px solid var(--border-light)'}}>
+        <div className="flex items-center gap-0">
+          <img src="/atslogo.jpg" alt="PeopleConnectHR" className="h-24 w-auto" />
+          <span className="text-2xl font-bold" style={{color: 'var(--text-primary)'}}>PeopleConnectHR</span>
         </div>
 
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3 bg-gray-100 px-4 py-2 rounded-full border border-gray-200">
-            <UserCircle size={20} className="text-gray-500" />
+          <div className="flex items-center gap-3 px-4 py-2 rounded-full" style={{backgroundColor: 'var(--neutral-100)', border: '1px solid var(--border-light)'}}>
+            <UserCircle size={20} style={{color: 'var(--text-tertiary)'}} />
             <div className="flex flex-col">
-              <span className="text-xs font-bold text-gray-700">{user.name}</span>
-              <span className="text-[10px] text-gray-500 uppercase tracking-tighter">{user.role}</span>
+              <span className="text-xs font-bold" style={{color: 'var(--text-primary)'}}>{user.name}</span>
+              <span className="text-[10px] uppercase tracking-tighter" style={{color: 'var(--text-secondary)'}}>{user.role}</span>
             </div>
           </div>
           <button 
             onClick={handleLogout}
-            className="p-2 hover:bg-red-50 text-gray-500 hover:text-red-500 rounded-full transition-colors border border-transparent hover:border-red-100"
+            className="p-2 rounded-full transition-colors border"
+            style={{color: 'var(--text-secondary)', borderColor: 'transparent'}}
+            onMouseEnter={(e) => {e.target.style.backgroundColor = 'var(--error-bg)'; e.target.style.color = 'var(--error-main)'; e.target.style.borderColor = 'var(--error-main)'}}
+            onMouseLeave={(e) => {e.target.style.backgroundColor = 'transparent'; e.target.style.color = 'var(--text-secondary)'; e.target.style.borderColor = 'transparent'}}
             title="Logout"
           >
             <LogOut size={20} />
@@ -109,14 +112,14 @@ const Dashboard = () => {
               {/* ATS CARD */}
               <div 
                 onClick={() => navigate('/recruitment')}
-                className="group bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-blue-200 transition-all cursor-pointer"
+                className="group bg-white p-6 rounded-2xl shadow-sm transition-all cursor-pointer" style={{border: '1px solid var(--border-light)'}}
               >
-                <div className="w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center mb-4 group-hover:bg-blue-600 transition-colors">
-                  <Users className="text-blue-600 group-hover:text-white transition-colors" size={28} />
+                <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-4 transition-colors" style={{backgroundColor: 'var(--primary-lighter)', color: 'var(--primary-main)'}} onMouseEnter={(e) => {e.currentTarget.style.backgroundColor = 'var(--primary-main)'; e.currentTarget.style.color = 'var(--text-inverse)';}} onMouseLeave={(e) => {e.currentTarget.style.backgroundColor = 'var(--primary-lighter)'; e.currentTarget.style.color = 'var(--primary-main)';}}>
+                  <Users size={28} />
                 </div>
                 <h3 className="text-xl font-bold text-slate-800 mb-2">ATS</h3>
                 <p className="text-sm text-gray-500 mb-4 font-medium">Manage candidates, job postings, and interviews.</p>
-                <span className="text-blue-600 text-sm font-bold flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                <span className="text-sm font-bold flex items-center gap-1 group-hover:translate-x-1 transition-transform" style={{color: 'var(--primary-main)'}}>
                   Open Dashboard &rarr;
                 </span>
               </div>
@@ -124,14 +127,14 @@ const Dashboard = () => {
               {/* CRM CARD */}
               <div 
                 onClick={() => navigate('/crm')}
-                className="group bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-purple-200 transition-all cursor-pointer"
+                className="group bg-white p-6 rounded-2xl shadow-sm transition-all cursor-pointer" style={{border: '1px solid var(--border-light)'}}
               >
-                <div className="w-14 h-14 bg-purple-50 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-600 transition-colors">
-                  <BarChart3 className="text-purple-600 group-hover:text-white transition-colors" size={28} />
+                <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-4 transition-colors" style={{backgroundColor: 'var(--secondary-light)', color: 'var(--secondary-main)'}} onMouseEnter={(e) => {e.currentTarget.style.backgroundColor = 'var(--secondary-main)'; e.currentTarget.style.color = 'var(--text-inverse)';}} onMouseLeave={(e) => {e.currentTarget.style.backgroundColor = 'var(--secondary-light)'; e.currentTarget.style.color = 'var(--secondary-main)';}}>
+                  <BarChart3 size={28} />
                 </div>
                 <h3 className="text-xl font-bold text-slate-800 mb-2">CRM</h3>
                 <p className="text-sm text-gray-500 mb-4 font-medium">Track leads, sales pipeline, and client relations.</p>
-                <span className="text-purple-600 text-sm font-bold flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                <span className="text-sm font-bold flex items-center gap-1 group-hover:translate-x-1 transition-transform" style={{color: 'var(--secondary-main)'}}>
                   View Pipeline &rarr;
                 </span>
               </div>
@@ -139,14 +142,14 @@ const Dashboard = () => {
               {/* HRMS CARD */}
               <div 
                 onClick={() => navigate('/hrms')}
-                className="group bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-pink-200 transition-all cursor-pointer"
+                className="group bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl transition-all cursor-pointer" style={{borderColor: 'var(--border-light)', '--border-color-hover': 'var(--secondary-light)'}}
               >
-                <div className="w-14 h-14 bg-pink-50 rounded-xl flex items-center justify-center mb-4 group-hover:bg-pink-600 transition-colors">
-                  <Briefcase className="text-pink-600 group-hover:text-white transition-colors" size={28} />
+                <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-4 transition-colors" style={{backgroundColor: 'var(--secondary-light)', color: 'var(--secondary-main)'}} onMouseEnter={(e) => {e.currentTarget.style.backgroundColor = 'var(--secondary-main)'; e.currentTarget.style.color = 'var(--text-inverse)';}} onMouseLeave={(e) => {e.currentTarget.style.backgroundColor = 'var(--secondary-light)'; e.currentTarget.style.color = 'var(--secondary-main)';}}>
+                  <Briefcase size={28} />
                 </div>
                 <h3 className="text-xl font-bold text-slate-800 mb-2">HRMS</h3>
                 <p className="text-sm text-gray-500 mb-4 font-medium">Employee records, attendance, and payroll mgmt.</p>
-                <span className="text-pink-600 text-sm font-bold flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                <span className="text-sm font-bold flex items-center gap-1 group-hover:translate-x-1 transition-transform" style={{color: 'var(--secondary-main)'}}>
                   Manage Staff &rarr;
                 </span>
               </div>

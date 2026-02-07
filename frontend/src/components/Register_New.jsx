@@ -142,14 +142,14 @@ const Register = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50 p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
+    <div className="flex items-center justify-center min-h-screen p-4" style={{backgroundColor: 'var(--neutral-50)'}}>
+      <div className="w-full max-w-md rounded-2xl p-8" style={{backgroundColor: 'var(--bg-primary)', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--border-light)'}}>
         
-        <h2 className="text-3xl font-bold text-center text-purple-700 mb-6">Create Account</h2>
+        <h2 className="text-3xl font-bold text-center mb-6" style={{color: 'var(--secondary-main)'}}>Create Account</h2>
         
         {/* Error Message */}
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm text-center font-medium">
+          <div className="mb-4 p-3 rounded-lg text-sm text-center font-medium" style={{backgroundColor: 'var(--error-bg)', border: '1px solid var(--error-main)', color: 'var(--error-main)'}}>
             {error}
           </div>
         )}
@@ -157,7 +157,7 @@ const Register = () => {
         {/* Form Tag me onSubmit lagaya */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Full Name</label>
+            <label className="block text-sm font-medium" style={{color: 'var(--text-secondary)'}}>Full Name</label>
             <input 
               type="text" 
               name="name" 
@@ -166,8 +166,8 @@ const Register = () => {
               placeholder="Enter your name"
               className={`w-full mt-1 p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none ${fieldErrors.name ? 'border-red-500' : 'border-gray-300'}`}
             />
-            {fieldErrors.name && <p className="text-red-500 text-sm mt-1">{fieldErrors.name}</p>}
-            <p className="text-gray-500 text-xs mt-1">First letter of each word will be capitalized</p>
+            {fieldErrors.name && <p className="text-sm mt-1" style={{color: 'var(--error-main)'}}>{fieldErrors.name}</p>}
+            <p className="text-xs mt-1" style={{color: 'var(--text-tertiary)'}}>First letter of each word will be capitalized</p>
           </div>
 
           <div>

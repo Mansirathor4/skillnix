@@ -1069,9 +1069,9 @@ const handleAddCandidate = async (e) => {
       label: 'Actions',
       render: (candidate) => (
         <div className="flex gap-2">
-          <button onClick={() => handleEdit(candidate)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Edit"><Edit size={16} /></button>
-          <button onClick={() => handleDelete(candidate._id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded" title="Delete"><Trash2 size={16} /></button>
-          <button onClick={() => handleSendEmail(candidate)} className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded" title="Send Email"><Mail size={16} /></button>
+          <button onClick={() => handleEdit(candidate)} className="p-1.5 rounded" title="Edit" style={{color: 'var(--info-main)'}} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--info-bg)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}><Edit size={16} /></button>
+          <button onClick={() => handleDelete(candidate._id)} className="p-1.5 rounded" title="Delete" style={{color: 'var(--error-main)'}} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--error-bg)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}><Trash2 size={16} /></button>
+          <button onClick={() => handleSendEmail(candidate)} className="p-1.5 rounded" title="Send Email" style={{color: 'var(--primary-main)'}} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--primary-lighter)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}><Mail size={16} /></button>
         </div>
       )
     },
@@ -1080,7 +1080,7 @@ const handleAddCandidate = async (e) => {
       key: 'resume',
       label: 'Resume',
       render: (candidate) => candidate.resume && (
-        <a href={candidate.resume} target="_blank" rel="noreferrer" className="inline-flex p-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"><FileText size={18} /></a>
+        <a href={candidate.resume} target="_blank" rel="noreferrer" className="inline-flex p-2 rounded-lg" style={{backgroundColor: 'var(--info-bg)', color: 'var(--info-main)'}} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--info-light)'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--info-bg)'; }}><FileText size={18} /></a>
       )
     },
     {
@@ -1088,8 +1088,8 @@ const handleAddCandidate = async (e) => {
       label: 'Contact Tools',
       render: (candidate) => (
         <div className="flex gap-2">
-          <button onClick={() => handleSendEmail(candidate)} className="p-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200" title="Send Email"><Mail size={16}/></button>
-          <button onClick={() => sendWhatsApp(candidate.contact)} className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200" title="WhatsApp Message"><MessageCircle size={16}/></button>
+          <button onClick={() => handleSendEmail(candidate)} className="p-2 rounded-lg" title="Send Email" style={{backgroundColor: 'var(--primary-lighter)', color: 'var(--primary-main)'}} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--primary-light)'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--primary-lighter)'; }}><Mail size={16}/></button>
+          <button onClick={() => sendWhatsApp(candidate.contact)} className="p-2 rounded-lg" title="WhatsApp Message" style={{backgroundColor: 'var(--success-bg)', color: 'var(--success-main)'}} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--success-light)'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--success-bg)'; }}><MessageCircle size={16}/></button>
         </div>
       )
     },
@@ -1109,7 +1109,7 @@ const handleAddCandidate = async (e) => {
       key: 'status',
       label: 'Status',
       render: (candidate) => (
-        <select className={`p-1.5 rounded-full text-xs font-bold ${candidate.status === 'Hired' ? 'bg-green-100 text-green-700' : 'bg-blue-50 text-blue-700'}`} value={candidate.status} onChange={(e) => handleStatusChange(candidate._id, e.target.value)}>
+        <select className="p-1.5 rounded-full text-xs font-bold" style={{backgroundColor: candidate.status === 'Hired' ? 'var(--success-bg)' : 'var(--info-bg)', color: candidate.status === 'Hired' ? 'var(--success-main)' : 'var(--info-main)'}} value={candidate.status} onChange={(e) => handleStatusChange(candidate._id, e.target.value)}>
           {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
       )

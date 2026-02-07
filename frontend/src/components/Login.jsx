@@ -110,28 +110,28 @@ const Login = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen p-4 bg-gray-50 font-sans">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
+    <div className="flex items-center justify-center min-h-screen p-4 font-sans" style={{backgroundColor: 'var(--neutral-50)'}}>
+      <div className="w-full max-w-md rounded-2xl p-8" style={{backgroundColor: 'var(--bg-primary)', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--border-light)'}}>
         
-        <h2 className="text-3xl font-bold text-center text-indigo-900 mb-6">Login</h2>
+        <h2 className="text-3xl font-bold text-center mb-6" style={{color: 'var(--primary-main)'}}>Login</h2>
         
         {/* Error Message */}
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm text-center font-medium">
+          <div className="mb-4 p-3 rounded-lg text-sm text-center font-medium" style={{backgroundColor: 'var(--error-bg)', border: '1px solid var(--error-main)', color: 'var(--error-main)'}}>
             {error}
           </div>
         )}
 
         {/* Success Message */}
         {success && (
-          <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm text-center font-medium">
+          <div className="mb-4 p-3 rounded-lg text-sm text-center font-medium" style={{backgroundColor: 'var(--success-bg)', border: '1px solid var(--success-main)', color: 'var(--success-main)'}}>
             {success}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-gray-600">Email Address</label>
+            <label className="block text-sm font-semibold" style={{color: 'var(--text-secondary)'}}>Email Address</label>
             <input 
               type="email" 
               name="email"
@@ -139,13 +139,20 @@ const Login = () => {
               value={formData.email}
               onChange={handleChange}
               placeholder="admin@company.com" 
-              className={`w-full mt-1 p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all ${fieldErrors.email ? 'border-red-500' : 'border-gray-300'}`}
+              className="w-full mt-1 p-3 rounded-lg outline-none transition-all"
+              style={{
+                border: `1px solid ${fieldErrors.email ? 'var(--error-main)' : 'var(--border-main)'}`,
+                color: 'var(--text-primary)',
+                backgroundColor: 'var(--bg-primary)'
+              }}
+              onFocus={(e) => e.target.style.boxShadow = '0 0 0 3px var(--primary-lighter)'}
+              onBlur={(e) => e.target.style.boxShadow = 'none'}
             />
-            {fieldErrors.email && <p className="text-red-500 text-sm mt-1">{fieldErrors.email}</p>}
+            {fieldErrors.email && <p className="text-sm mt-1" style={{color: 'var(--error-main)'}}>{fieldErrors.email}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-600">Password</label>
+            <label className="block text-sm font-semibold" style={{color: 'var(--text-secondary)'}}>Password</label>
             <input 
               type="password" 
               name="password"
@@ -153,21 +160,34 @@ const Login = () => {
               value={formData.password}
               onChange={handleChange}
               placeholder="••••••••" 
-              className={`w-full mt-1 p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all ${fieldErrors.password ? 'border-red-500' : 'border-gray-300'}`}
+              className="w-full mt-1 p-3 rounded-lg outline-none transition-all"
+              style={{
+                border: `1px solid ${fieldErrors.password ? 'var(--error-main)' : 'var(--border-main)'}`,
+                color: 'var(--text-primary)',
+                backgroundColor: 'var(--bg-primary)'
+              }}
+              onFocus={(e) => e.target.style.boxShadow = '0 0 0 3px var(--primary-lighter)'}
+              onBlur={(e) => e.target.style.boxShadow = 'none'}
             />
-            {fieldErrors.password && <p className="text-red-500 text-sm mt-1">{fieldErrors.password}</p>}
+            {fieldErrors.password && <p className="text-sm mt-1" style={{color: 'var(--error-main)'}}>{fieldErrors.password}</p>}
           </div>
           
           <button 
             type="submit" 
-            className="w-full bg-indigo-900 hover:bg-indigo-800 text-white font-bold py-3 rounded-lg shadow-lg transition-all active:scale-95"
+            className="w-full text-white font-bold py-3 rounded-lg shadow-lg transition-all active:scale-95"
+            style={{
+              background: 'var(--gradient-primary)',
+              boxShadow: '0 0 20px rgba(99, 102, 241, 0.3)'
+            }}
+            onMouseEnter={(e) => e.target.style.boxShadow = '0 0 30px rgba(99, 102, 241, 0.5)'}
+            onMouseLeave={(e) => e.target.style.boxShadow = '0 0 20px rgba(99, 102, 241, 0.3)'}
           >
             Sign In
           </button>
         </form>
 
-        <p className="text-center text-gray-500 mt-6">
-          New here? <Link to="/register" className="text-indigo-600 font-semibold hover:underline">Register Account</Link>
+        <p className="text-center mt-6" style={{color: 'var(--text-secondary)'}}>
+          New here? <Link to="/register" className="font-semibold hover:underline" style={{color: 'var(--primary-main)'}}>Register Account</Link>
         </p>
       </div>
     </div>

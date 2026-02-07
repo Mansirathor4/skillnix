@@ -142,14 +142,14 @@ const Register = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50 p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
+    <div className="flex items-center justify-center min-h-screen p-4" style={{backgroundColor: 'var(--neutral-50)'}}>
+      <div className="w-full max-w-md rounded-2xl p-8" style={{backgroundColor: 'var(--bg-primary)', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--border-light)', transition: 'var(--transition-base)'}}>
         
-        <h2 className="text-3xl font-bold text-center text-purple-700 mb-6">Create Account</h2>
+        <h2 className="text-3xl font-bold text-center mb-6" style={{color: 'var(--secondary-main)'}}>Create Account</h2>
         
         {/* Error Message */}
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm text-center font-medium">
+          <div className="mb-4 p-3 rounded-lg text-sm text-center font-medium" style={{backgroundColor: 'var(--error-bg)', border: '1px solid var(--error-main)', color: 'var(--error-main)'}}>
             {error}
           </div>
         )}
@@ -157,34 +157,46 @@ const Register = () => {
         {/* Form Tag me onSubmit lagaya */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Full Name</label>
+            <label className="block text-sm font-medium" style={{color: 'var(--text-secondary)'}}>Full Name</label>
             <input 
               type="text" 
               name="name" 
               value={formData.name}
               onChange={handleChange} 
               placeholder="Enter your name"
-              className={`w-full mt-1 p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none ${fieldErrors.name ? 'border-red-500' : 'border-gray-300'}`}
+              className="w-full mt-1 p-3 rounded-lg focus:outline-none transition-all"
+              style={{
+                border: `1px solid ${fieldErrors.name ? 'var(--error-main)' : 'var(--border-main)'}`,
+                color: 'var(--text-primary)',
+                backgroundColor: 'var(--bg-primary)',
+                boxShadow: fieldErrors.name ? '0 0 0 3px var(--error-bg)' : 'none'
+              }}
             />
-            {fieldErrors.name && <p className="text-red-500 text-sm mt-1">{fieldErrors.name}</p>}
-            <p className="text-gray-500 text-xs mt-1">First letter of each word will be capitalized</p>
+            {fieldErrors.name && <p className="text-sm mt-1" style={{color: 'var(--error-main)'}}>{fieldErrors.name}</p>}
+            <p className="text-xs mt-1" style={{color: 'var(--text-tertiary)'}}>First letter of each word will be capitalized</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Email</label>
+            <label className="block text-sm font-medium" style={{color: 'var(--text-secondary)'}}>Email</label>
             <input 
               type="email" 
               name="email" 
               value={formData.email}
               onChange={handleChange} 
               placeholder="your@email.com"
-              className={`w-full mt-1 p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none ${fieldErrors.email ? 'border-red-500' : 'border-gray-300'}`}
+              className="w-full mt-1 p-3 rounded-lg focus:outline-none transition-all"
+              style={{
+                border: `1px solid ${fieldErrors.email ? 'var(--error-main)' : 'var(--border-main)'}`,
+                color: 'var(--text-primary)',
+                backgroundColor: 'var(--bg-primary)',
+                boxShadow: fieldErrors.email ? '0 0 0 3px var(--error-bg)' : 'none'
+              }}
             />
-            {fieldErrors.email && <p className="text-red-500 text-sm mt-1">{fieldErrors.email}</p>}
+            {fieldErrors.email && <p className="text-sm mt-1" style={{color: 'var(--error-main)'}}>{fieldErrors.email}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+            <label className="block text-sm font-medium" style={{color: 'var(--text-secondary)'}}>Phone Number</label>
             <input 
               type="tel" 
               name="phone" 
@@ -192,33 +204,45 @@ const Register = () => {
               onChange={handleChange} 
               placeholder="1234567890"
               maxLength="10"
-              className={`w-full mt-1 p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none ${fieldErrors.phone ? 'border-red-500' : 'border-gray-300'}`}
+              className="w-full mt-1 p-3 rounded-lg focus:outline-none transition-all"
+              style={{
+                border: `1px solid ${fieldErrors.phone ? 'var(--error-main)' : 'var(--border-main)'}`,
+                color: 'var(--text-primary)',
+                backgroundColor: 'var(--bg-primary)',
+                boxShadow: fieldErrors.phone ? '0 0 0 3px var(--error-bg)' : 'none'
+              }}
             />
-            {fieldErrors.phone && <p className="text-red-500 text-sm mt-1">{fieldErrors.phone}</p>}
-            <p className="text-gray-500 text-xs mt-1">Must be exactly 10 digits</p>
+            {fieldErrors.phone && <p className="text-sm mt-1" style={{color: 'var(--error-main)'}}>{fieldErrors.phone}</p>}
+            <p className="text-xs mt-1" style={{color: 'var(--text-tertiary)'}}>Must be exactly 10 digits</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Create Password</label>
+            <label className="block text-sm font-medium" style={{color: 'var(--text-secondary)'}}>Create Password</label>
             <input 
               type="password" 
               name="password" 
               value={formData.password}
               onChange={handleChange} 
               placeholder="Min 8 chars with A-Z, a-z, 0-9, !@#..."
-              className={`w-full mt-1 p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none ${fieldErrors.password ? 'border-red-500' : 'border-gray-300'}`}
+              className="w-full mt-1 p-3 rounded-lg focus:outline-none transition-all"
+              style={{
+                border: `1px solid ${fieldErrors.password ? 'var(--error-main)' : 'var(--border-main)'}`,
+                color: 'var(--text-primary)',
+                backgroundColor: 'var(--bg-primary)',
+                boxShadow: fieldErrors.password ? '0 0 0 3px var(--error-bg)' : 'none'
+              }}
             />
-            {fieldErrors.password && <p className="text-red-500 text-sm mt-1">{fieldErrors.password}</p>}
-            <p className="text-gray-500 text-xs mt-1">Must include: uppercase, lowercase, number & special character</p>
+            {fieldErrors.password && <p className="text-sm mt-1" style={{color: 'var(--error-main)'}}>{fieldErrors.password}</p>}
+            <p className="text-xs mt-1" style={{color: 'var(--text-tertiary)'}}>Must include: uppercase, lowercase, number & special character</p>
           </div>
           
-          <button type="submit" className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold py-3 rounded-lg shadow-md hover:opacity-90 transition-all mt-4">
+          <button type="submit" className="w-full text-white font-bold py-3 rounded-lg shadow-md transition-all mt-4" style={{background: 'var(--gradient-primary)'}} onMouseEnter={(e) => e.target.style.opacity = '0.9'} onMouseLeave={(e) => e.target.style.opacity = '1'}>
             Register Now
           </button>
         </form>
 
-        <p className="text-center text-gray-500 mt-6">
-          Already have an ID? <Link to="/login" className="text-indigo-600 font-semibold hover:underline">Login</Link>
+        <p className="text-center mt-6" style={{color: 'var(--text-secondary)'}}>
+          Already have an ID? <Link to="/login" className="font-semibold hover:underline" style={{color: 'var(--primary-main)'}}>Login</Link>
         </p>
       </div>
     </div>

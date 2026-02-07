@@ -1,4 +1,117 @@
 @import "tailwindcss";
+
+/* ========================================
+   DESIGN SYSTEM - COLOR THEME & STYLES
+   ======================================== */
+
+:root {
+  /* ===== PRIMARY COLORS - NEW THEME ===== */
+  --primary-main: #3b82f6;        /* Blue - Main brand color */
+  --primary-light: #60a5fa;       /* Light blue */
+  --primary-dark: #1d4ed8;        /* Dark blue */
+  --primary-lighter: #dbeafe;     /* Very light blue background */
+
+  /* ===== SECONDARY COLORS ===== */
+  --secondary-main: #a855f7;      /* Purple - Secondary accent */
+  --secondary-light: #d8b4fe;     /* Light purple */
+  --secondary-dark: #7e22ce;      /* Dark purple */
+
+  /* ===== STATUS COLORS ===== */
+  --success-main: #22c55e;        /* Green - Success/Sent */
+  --success-light: #86efac;       /* Light green */
+  --success-bg: #f0fdf4;          /* Very light green background */
+
+  --error-main: #ef4444;          /* Red - Error/Failed */
+  --error-light: #fca5a5;         /* Light red */
+  --error-bg: #fef2f2;            /* Very light red background */
+
+  --warning-main: #f59e0b;        /* Amber - Warning */
+  --warning-light: #fbbf24;       /* Light amber */
+  --warning-bg: #fffbeb;          /* Very light amber background */
+
+  --info-main: #0ea5e9;           /* Sky Blue - Info/Processing */
+  --info-light: #38bdf8;          /* Light sky blue */
+  --info-bg: #f0f9ff;             /* Very light sky blue background */
+
+  /* ===== NEUTRAL COLORS ===== */
+  --neutral-50: #fafafa;          /* Almost white */
+  --neutral-100: #f3f4f6;         /* Very light gray */
+  --neutral-200: #e5e7eb;         /* Light gray */
+  --neutral-300: #d1d5db;         /* Gray */
+  --neutral-400: #9ca3af;         /* Medium gray */
+  --neutral-500: #6b7280;         /* Dark gray */
+  --neutral-600: #4b5563;         /* Darker gray */
+  --neutral-700: #374151;         /* Very dark gray */
+  --neutral-800: #1f2937;         /* Almost black */
+  --neutral-900: #111827;         /* Black */
+
+  /* ===== SEMANTIC COLORS ===== */
+  --text-primary: #111827;        /* Main text */
+  --text-secondary: #6b7280;      /* Secondary text */
+  --text-tertiary: #9ca3af;       /* Tertiary text */
+  --text-inverse: #ffffff;        /* Text on dark backgrounds */
+
+  --bg-primary: #ffffff;          /* Main background */
+  --bg-secondary: #f9fafb;        /* Secondary background */
+  --bg-tertiary: #f3f4f6;         /* Tertiary background */
+
+  --border-light: #e5e7eb;        /* Light border */
+  --border-main: #d1d5db;         /* Main border */
+  --border-dark: #9ca3af;         /* Dark border */
+
+  /* ===== OVERLAY ===== */
+  --overlay-dark: rgba(15, 23, 42, 0.5);  /* Semi-transparent dark backdrop */
+
+  /* ===== GRADIENTS ===== */
+  --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #a855f7 100%);
+  --gradient-secondary: linear-gradient(135deg, #a855f7 0%, #22c55e 100%);
+  --gradient-success: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  --gradient-error: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  --gradient-info: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+
+  /* ===== SHADOWS ===== */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+  /* ===== SPACING ===== */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+
+  /* ===== BORDER RADIUS ===== */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-full: 9999px;
+
+  /* ===== TRANSITIONS ===== */
+  --transition-fast: 150ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
+
+  /* ===== TYPOGRAPHY ===== */
+  --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-base: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 32px;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 /* 
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
