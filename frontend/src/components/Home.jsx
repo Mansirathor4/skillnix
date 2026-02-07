@@ -23,7 +23,7 @@ const Home = () => {
           </h1>
           
           <p className="text-lg md:text-xl text-blue-100 font-medium mb-8 leading-relaxed">
-            TriNexus System: The ultimate Hybrid OS combining ATS, CRM, and HRMS into one seamless workflow.
+            PeopleConnectHR: The ultimate Hybrid OS combining ATS, CRM, and HRMS into one seamless workflow.
           </p>
 
           {/* Social Proof / Dashboard Image Placeholder */}
@@ -91,7 +91,7 @@ const Home = () => {
         </div>
 
         <p className="mt-8 text-center text-sm text-gray-400">
-          By continuing, you agree to TriNexus Terms of Service.
+          By continuing, you agree to PeopleConnectHR Terms of Service.
         </p>
 
       </div>

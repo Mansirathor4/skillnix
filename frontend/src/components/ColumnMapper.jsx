@@ -4,7 +4,7 @@ import { X, ArrowRight } from 'lucide-react';
 const ColumnMapper = ({ excelHeaders, onMapComplete, onClose }) => {
   const dbFields = [
     'name', 'email', 'contact', 'position', 'location', 'companyName',
-    'experience', 'ctc', 'expectedCtc', 'noticePeriod', 'fls', 'status', 'client', 'spoc', 'source', 'date'
+    'experience', 'ctc', 'expectedCtc', 'noticePeriod', 'status', 'client', 'spoc', 'source', 'feedback', 'fls', 'date'
   ];
 
   const [mapping, setMapping] = useState(() => {
@@ -26,6 +26,8 @@ const ColumnMapper = ({ excelHeaders, onMapComplete, onClose }) => {
         finalMapping[parseInt(excelIdx)] = dbField;
       }
     });
+    console.log('✅ Column mapping confirmed:', finalMapping);
+    console.log('✅ Column mapping keys:', Object.keys(finalMapping));
     onMapComplete(finalMapping);
   };
 
@@ -87,6 +89,7 @@ const ColumnMapper = ({ excelHeaders, onMapComplete, onClose }) => {
                       <option value="client">Client</option>
                       <option value="spoc">SPOC</option>
                       <option value="source">Source</option>
+                      <option value="feedback">Feedback</option>
                     </optgroup>
                   </select>
                 </div>

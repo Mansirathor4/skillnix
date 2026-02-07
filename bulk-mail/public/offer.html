@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Generate Offer Letter</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      padding: 40px;
+      max-width: 500px;
+      width: 100%;
+    }
+    h2 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+      font-size: 28px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #555;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #ddd;
+      border-radius: 5px;
+      font-size: 16px;
+      font-family: inherit;
+      transition: border-color 0.3s;
+    }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-top: 10px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .message {
+      padding: 12px;
+      margin-top: 15px;
+      border-radius: 5px;
+      text-align: center;
+      font-weight: 500;
+      min-height: 20px;
+    }
+    .success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      animation: fadeIn 0.3s;
+    }
+    .modal.show {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .modal-content {
+      background: white;
+      padding: 40px;
+      border-radius: 15px;
+      text-align: center;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.5s ease-out;
+    }
+    @keyframes slideUp {
+      from {
+        transform: translateY(50px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+    .modal-content h2 {
+      margin: 0;
+      color: #28a745;
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+    .modal-content .checkmark {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 20px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 50px;
+    }
+    .modal-content p {
+      color: #666;
+      font-size: 16px;
+      margin-bottom: 20px;
+    }
+    .modal-content button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin-top: 20px;
+    }
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 20px;
+      color: #667eea;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .back-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>📄 Generate Offer Letter</h2>
+
+  <div class="form-group">
+    <label for="candidateName">Candidate Name</label>
+    <input id="candidateName" type="text" placeholder="Enter candidate full name" />
+  </div>
+
+  <div class="form-group">
+    <label for="email">Email Address (Main Recipient)</label>
+    <input id="email" type="email" placeholder="Enter main recipient email" />
+  </div>
+
+  <div class="form-group">
+    <label for="ccEmails">CC Emails (Optional)</label>
+    <input id="ccEmails" type="text" placeholder="Enter CC emails separated by comma (e.g., email1@example.com, email2@example.com)" />
+  </div>
+
+  <div class="form-group">
+    <label for="bccEmails">BCC Emails (Optional)</label>
+    <input id="bccEmails" type="text" placeholder="Enter BCC emails separated by comma (e.g., email1@example.com, email2@example.com)" />
+  </div>
+
+  <div class="form-group">
+    <label for="position">Position</label>
+    <input id="position" type="text" placeholder="Enter job position" />
+  </div>
+
+  <div class="form-group">
+    <label for="salary">Salary (Annual)</label>
+    <input id="salary" type="text" placeholder="Enter salary amount" />
+  </div>
+
+  <div class="form-group">
+    <label for="joiningDate">Joining Date</label>
+    <input id="joiningDate" type="date" />
+  </div>
+
+  <div class="form-group">
+    <label for="department">Department</label>
+    <input id="department" type="text" placeholder="Enter department" />
+  </div>
+
+  <div class="form-group">
+    <label for="offerMessage">Additional Message (Optional)</label>
+    <textarea id="offerMessage" placeholder="Add any additional message to the offer letter..."></textarea>
+  </div>
+
+  <button onclick="generateOfferLetter()" id="generateBtn">📧 Generate & Send Offer Letter</button>
+  <button onclick="previewOfferLetter()" id="previewBtn" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); margin-top: 10px;">👁️ Preview Offer Letter</button>
+  <button onclick="downloadOfferLetter()" id="downloadBtn" style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); margin-top: 10px;">⬇️ Download Offer Letter (PDF)</button>
+  <div id="offerMsg" class="message"></div>
+
+  <a href="index.html" class="back-link">← Back to Email Verification</a>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="modal">
+  <div class="modal-content">
+    <div class="checkmark">✓</div>
+    <h2>Offer Sent!</h2>
+    <p id="successEmail" style="color: #667eea; font-weight: bold;"></p>
+    <p>The offer letter has been sent successfully via Amazon SES.</p>
+    <button onclick="resetForm()">Send Another Offer</button>
+  </div>
+</div>
+
+<script>
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  async function downloadOfferLetter() {
+    const candidateName = document.getElementById("candidateName").value.trim();
+    const position = document.getElementById("position").value.trim();
+    const salary = document.getElementById("salary").value.trim();
+    const joiningDate = document.getElementById("joiningDate").value;
+    const department = document.getElementById("department").value.trim();
+    const offerMessage = document.getElementById("offerMessage").value.trim();
+    const downloadBtn = document.getElementById("downloadBtn");
+    const offerMsg = document.getElementById("offerMsg");
+
+    // Validation
+    if (!candidateName || !position || !salary || !joiningDate || !department) {
+      showMessage(offerMsg, "❌ Please fill all required fields", "error");
+      return;
+    }
+
+    downloadBtn.disabled = true;
+    downloadBtn.innerText = "Downloading...";
+
+    try {
+      const res = await fetch("/api/download-offer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          candidateName,
+          position,
+          salary,
+          joiningDate,
+          department,
+          offerMessage
+        })
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        showMessage(offerMsg, "❌ " + error.message, "error");
+        return;
+      }
+
+      // Get the PDF blob
+      const blob = await res.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `OfferLetter_${candidateName.replace(/\s+/g, '_')}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      showMessage(offerMsg, "✅ Offer letter downloaded successfully!", "success");
+    } catch (error) {
+      console.error('Error:', error);
+      showMessage(offerMsg, "❌ Error: " + error.message, "error");
+    } finally {
+      downloadBtn.disabled = false;
+      downloadBtn.innerText = "⬇️ Download Offer Letter (PDF)";
+    }
+  }
+
+  async function previewOfferLetter() {
+    const candidateName = document.getElementById("candidateName").value.trim();
+    const position = document.getElementById("position").value.trim();
+    const salary = document.getElementById("salary").value.trim();
+    const joiningDate = document.getElementById("joiningDate").value;
+    const department = document.getElementById("department").value.trim();
+    const offerMessage = document.getElementById("offerMessage").value.trim();
+
+    // Validation
+    if (!candidateName || !position || !salary || !joiningDate || !department) {
+      showMessage(document.getElementById("offerMsg"), "❌ Please fill all required fields", "error");
+      return;
+    }
+
+    // Create a text preview
+    const previewContent = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        OFFER LETTER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Date: ${new Date().toLocaleDateString()}
+
+Dear ${candidateName},
+
+We are pleased to offer you the position of ${position} in the ${department} department at PeopleConnect HRMS.
+
+Position: ${position}
+Department: ${department}
+Salary (Annual): ₹${salary}
+Joining Date: ${joiningDate}
+
+We look forward to having you on board and believe you will be a valuable addition to our team.
+
+${offerMessage ? `Additional Information: ${offerMessage}` : ''}
+
+Regards,
+
+PeopleConnect HR Team
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    `;
+
+    // Show in alert for now
+    alert(previewContent);
+  }
+
+  async function generateOfferLetter() {
+    const candidateName = document.getElementById("candidateName").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const ccEmails = document.getElementById("ccEmails").value.trim();
+    const bccEmails = document.getElementById("bccEmails").value.trim();
+    const position = document.getElementById("position").value.trim();
+    const salary = document.getElementById("salary").value.trim();
+    const joiningDate = document.getElementById("joiningDate").value;
+    const department = document.getElementById("department").value.trim();
+    const offerMessage = document.getElementById("offerMessage").value.trim();
+    const generateBtn = document.getElementById("generateBtn");
+    const offerMsg = document.getElementById("offerMsg");
+
+    // Validation
+    if (!candidateName) {
+      showMessage(offerMsg, "❌ Please enter candidate name", "error");
+      return;
+    }
+
+    if (!email) {
+      showMessage(offerMsg, "❌ Please enter main recipient email", "error");
+      return;
+    }
+
+    if (!emailRegex.test(email)) {
+      showMessage(offerMsg, "❌ Invalid main email format", "error");
+      return;
+    }
+
+    // Validate CC emails if provided
+    if (ccEmails) {
+      const ccArray = ccEmails.split(',').map(e => e.trim());
+      for (let cc of ccArray) {
+        if (cc && !emailRegex.test(cc)) {
+          showMessage(offerMsg, "❌ Invalid CC email format: " + cc, "error");
+          return;
+        }
+      }
+    }
+
+    // Validate BCC emails if provided
+    if (bccEmails) {
+      const bccArray = bccEmails.split(',').map(e => e.trim());
+      for (let bcc of bccArray) {
+        if (bcc && !emailRegex.test(bcc)) {
+          showMessage(offerMsg, "❌ Invalid BCC email format: " + bcc, "error");
+          return;
+        }
+      }
+    }
+
+    if (!position) {
+      showMessage(offerMsg, "❌ Please enter position", "error");
+      return;
+    }
+
+    if (!salary) {
+      showMessage(offerMsg, "❌ Please enter salary", "error");
+      return;
+    }
+
+    if (!joiningDate) {
+      showMessage(offerMsg, "❌ Please select joining date", "error");
+      return;
+    }
+
+    if (!department) {
+      showMessage(offerMsg, "❌ Please enter department", "error");
+      return;
+    }
+
+    generateBtn.disabled = true;
+    generateBtn.innerText = "Generating & Sending...";
+
+    try {
+      console.log('Sending offer letter to:', email);
+      const res = await fetch("/api/generate-offer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          candidateName,
+          position,
+          salary,
+          joiningDate,
+          department,
+          offerMessage,
+          ccEmails: ccEmails ? ccEmails.split(',').map(e => e.trim()).filter(e => e) : [],
+          bccEmails: bccEmails ? bccEmails.split(',').map(e => e.trim()).filter(e => e) : []
+        })
+      });
+
+      const data = await res.json();
+      console.log('Response:', data);
+
+      if (data.success) {
+        showMessage(offerMsg, "✅ " + data.message, "success");
+        setTimeout(() => {
+          showSuccessModal(email, ccEmails, bccEmails);
+        }, 1000);
+      } else {
+        showMessage(offerMsg, "❌ " + data.message, "error");
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      showMessage(offerMsg, "❌ Error: " + error.message, "error");
+    } finally {
+      generateBtn.disabled = false;
+      generateBtn.innerText = "📧 Generate & Send Offer Letter";
+    }
+  }
+
+  function showSuccessModal(email, ccEmails, bccEmails) {
+    let recipientInfo = "✨ " + email + " ✨";
+    if (ccEmails) {
+      recipientInfo += "\n📋 CC: " + ccEmails;
+    }
+    if (bccEmails) {
+      recipientInfo += "\n🔒 BCC: " + bccEmails;
+    }
+    document.getElementById("successEmail").innerText = recipientInfo;
+    document.getElementById("successModal").classList.add("show");
+  }
+
+  function resetForm() {
+    // Hide modal
+    document.getElementById("successModal").classList.remove("show");
+    
+    // Reset all fields
+    document.getElementById("candidateName").value = "";
+    document.getElementById("email").value = "";
+    document.getElementById("position").value = "";
+    document.getElementById("salary").value = "";
+    document.getElementById("joiningDate").value = "";
+    document.getElementById("department").value = "";
+    document.getElementById("offerMessage").value = "";
+    document.getElementById("offerMsg").innerText = "";
+    
+    // Focus on first field
+    document.getElementById("candidateName").focus();
+  }
+
+  function showMessage(element, message, type) {
+    element.innerText = message;
+    element.className = `message ${type}`;
+  }
+
+  // Allow Enter key on last field
+  document.getElementById("offerMessage").addEventListener("keypress", (e) => {
+    if (e.key === "Enter" && e.ctrlKey) {
+      generateOfferLetter();
+    }
+  });
+
+  console.log('✅ Offer Letter System initialized');
+</script>
+
+</body>
+</html>

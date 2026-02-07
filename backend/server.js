@@ -9,6 +9,7 @@ const fs = require('fs');
 const homeRoutes = require('./routes/home');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const candidateRoutes = require('./routes/candidateRoutes');
+const emailRoutes = require('./routes/emailRoutes');
 
 // Models Import (Sirf User aur Job yahan rakhein, Candidate routes mein handle hoga)
 const Job = require('./models/Job');
@@ -35,6 +36,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api', homeRoutes);
 // Ye line saare /candidates waale calls ko aapki router file par bhej degi
 app.use('/candidates', candidateRoutes); 
+app.use('/api/email', emailRoutes);
 
 // Static Folder for Uploads
 const uploadDir = 'uploads';
@@ -46,17 +48,22 @@ mongoose.connect(process.env.MONGODB_URL || 'mongodb://127.0.0.1:27017/allinone'
   .then(() => console.log('✅ MongoDB Connected'))
   .catch(err => console.error('❌ Mongo Error:', err));
 
-// Drop legacy unique index on contact if it still exists
+// Drop legacy unique indexes if they still exist
 mongoose.connection.once('open', async () => {
   try {
     const indexes = await Candidate.collection.indexes();
     const hasContactIndex = indexes.find(idx => idx.name === 'contact_1');
+    const hasEmailIndex = indexes.find(idx => idx.name === 'email_1');
     if (hasContactIndex) {
       await Candidate.collection.dropIndex('contact_1');
       console.log('✅ Dropped legacy contact_1 index');
     }
+    if (hasEmailIndex) {
+      await Candidate.collection.dropIndex('email_1');
+      console.log('✅ Dropped legacy email_1 index');
+    }
   } catch (err) {
-    console.warn('⚠️ Failed to drop contact_1 index:', err.message);
+    console.warn('⚠️ Failed to drop legacy indexes:', err.message);
   }
 });
 

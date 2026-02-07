@@ -45,27 +45,28 @@ const mongoose = require('mongoose');
 const CandidateSchema = new mongoose.Schema({
   srNo: { type: String },
   date: { type: String },
-  location: { type: String },
-  position: { type: String, required: true },
-  fls: { type: String },
-  name: { type: String, required: true },
-  contact: { type: String, required: true }, // Removed unique - we auto-generate anyway
-  email: { type: String, required: true, unique: true, lowercase: true }, // Keep unique for email only
+  location: { type: String, default: '' },
+  position: { type: String, default: '' }, // ✅ Changed to optional with default
+  fls: { type: String, default: '' },
+  name: { type: String, required: true }, // Name is still required
+  contact: { type: String, default: '' }, // ✅ Changed to optional - auto-generated if missing
+  email: { type: String, required: true, lowercase: true }, // Email still required - auto-generated if missing
   callBackDate: { type: String, default: "" },
-  companyName: { type: String },
-  experience: { type: String },
-  ctc: { type: String },
-  expectedCtc: { type: String },
-  noticePeriod: { type: String },
+  companyName: { type: String, default: '' },
+  experience: { type: String, default: '' },
+  ctc: { type: String, default: '' },
+  expectedCtc: { type: String, default: '' },
+  noticePeriod: { type: String, default: '' },
   status: { 
     type: String, 
     default: 'Applied',
     enum: ['Applied', 'Screening', 'Interview', 'Offer', 'Hired','Joined', 'Rejected'] 
   },
-  client: { type: String },
-  spoc: { type: String },
-  source: { type: String },
-  resume: { type: String }, 
+  client: { type: String, default: '' },
+  spoc: { type: String, default: '' },
+  source: { type: String, default: '' },
+  feedback: { type: String, default: '' }, // ✅ Added feedback field
+  resume: { type: String, default: '' }, 
   hiredDate: { type: Date },
   statusHistory: [{
     status: { type: String },

@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bulk Email Manager - Enterprise Edition</title>
+  <link rel="stylesheet" href="styles.css">
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 40px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      font-size: 16px;
+      opacity: 0.9;
+    }
+
+    .main-content {
+      padding: 40px;
+    }
+
+    .section {
+      margin-bottom: 40px;
+    }
+
+    .section-title {
+      font-size: 22px;
+      color: #333;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .upload-area {
+      border: 3px dashed #667eea;
+      border-radius: 10px;
+      padding: 40px;
+      text-align: center;
+      background: #f8f9ff;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .upload-area:hover {
+      border-color: #764ba2;
+      background: #f0f2ff;
+    }
+
+    .upload-area input {
+      display: none;
+    }
+
+    .upload-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px;
+      transition: transform 0.2s;
+    }
+
+    .upload-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .preview-section {
+      background: #f9f9f9;
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+
+    .summary-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .stat-box {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      border-left: 4px solid #667eea;
+    }
+
+    .stat-box h3 {
+      font-size: 14px;
+      color: #666;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .stat-box .value {
+      font-size: 32px;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .stat-box.failed {
+      border-left-color: #ff6b6b;
+    }
+
+    .stat-box.failed .value {
+      color: #ff6b6b;
+    }
+
+    .table-wrapper {
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      margin-top: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background: #f5f5f5;
+      border-bottom: 2px solid #ddd;
+    }
+
+    th {
+      padding: 15px;
+      text-align: left;
+      font-weight: 600;
+      color: #333;
+    }
+
+    td {
+      padding: 15px;
+      border-bottom: 1px solid #eee;
+    }
+
+    tr:hover {
+      background: #f9f9f9;
+    }
+
+    .checkbox {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+    }
+
+    .email-badge {
+      background: #667eea;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .email-badge.invalid {
+      background: #ff6b6b;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 30px;
+    }
+
+    .btn {
+      padding: 12px 30px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-secondary {
+      background: #e9ecef;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background: #dee2e6;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 15px;
+      padding: 40px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      text-align: center;
+    }
+
+    .modal-content h2 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    .modal-content p {
+      font-size: 16px;
+      color: #666;
+      margin-bottom: 15px;
+      line-height: 1.6;
+    }
+
+    .status-icon {
+      font-size: 48px;
+      margin-bottom: 20px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #e9ecef;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 20px 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      transition: width 0.3s;
+    }
+
+    .status-section {
+      background: #f9f9f9;
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .status-item:last-child {
+      border-bottom: none;
+    }
+
+    .status-label {
+      font-weight: 600;
+      color: #666;
+    }
+
+    .status-value {
+      color: #667eea;
+      font-weight: bold;
+    }
+
+    .error-message {
+      background: #ffe0e0;
+      border-left: 4px solid #ff6b6b;
+      color: #c92a2a;
+      padding: 15px;
+      border-radius: 5px;
+      margin: 15px 0;
+    }
+
+    .success-message {
+      background: #d4f8e8;
+      border-left: 4px solid #51cf66;
+      color: #2f9e44;
+      padding: 15px;
+      border-radius: 5px;
+      margin: 15px 0;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .test-sample-btn {
+      background: #51cf66;
+      color: white;
+      margin-top: 20px;
+    }
+
+    .test-sample-btn:hover {
+      background: #40c057;
+    }
+
+    @media (max-width: 768px) {
+      .main-content {
+        padding: 20px;
+      }
+
+      .header {
+        padding: 20px;
+      }
+
+      .header h1 {
+        font-size: 24px;
+      }
+
+      table {
+        font-size: 14px;
+      }
+
+      th, td {
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    function BulkEmailApp() {
+      const [step, setStep] = useState("upload"); // upload, preview, confirm, sending, results
+      const [file, setFile] = useState(null);
+      const [emailType, setEmailType] = useState("offer"); // offer or otp
+      const [uploadedData, setUploadedData] = useState(null);
+      const [selectedEmails, setSelectedEmails] = useState(new Set());
+      const [previewId, setPreviewId] = useState(null);
+      const [campaignStatus, setCampaignStatus] = useState(null);
+      const [emailStatuses, setEmailStatuses] = useState({}); // Track individual email statuses
+      const [error, setError] = useState(null);
+      const [loading, setLoading] = useState(false);
+      const [statusPolling, setStatusPolling] = useState(null);
+      const [campaignCompleted, setCampaignCompleted] = useState(false); // Track campaign completion
+      
+      // Filter states
+      const [filters, setFilters] = useState({
+        position: "",
+        department: "",
+        salaryMin: "",
+        salaryMax: "",
+      });
+
+      // File upload handler
+      const handleFileUpload = async (e) => {
+        setError(null);
+        const uploadedFile = e.target.files[0];
+        if (!uploadedFile) return;
+
+        setFile(uploadedFile);
+        setLoading(true);
+
+        try {
+          // Upload file to backend
+          const formData = new FormData();
+          formData.append("file", uploadedFile);
+          formData.append("type", emailType);
+
+          const response = await fetch("/api/bulk/upload-file", {
+            method: "POST",
+            body: formData
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            setUploadedData({
+              summary: result.summary,
+              records: result.records || result.valid, // Handle both old and new format
+              failed: result.failed || [],
+              columns: result.columns || {}
+            });
+            setPreviewId(result.previewId);
+            setStep("preview");
+          } else {
+            setError(result.message);
+          }
+        } catch (err) {
+          setError("Failed to upload file: " + err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      // Load test sample data
+      const loadTestSample = async () => {
+        setError(null);
+        setLoading(true);
+
+        try {
+          const response = await fetch("/api/bulk/test-sample");
+          const result = await response.json();
+
+          if (result.success) {
+            setUploadedData({
+              summary: result.summary,
+              records: result.records || result.valid,
+              failed: result.failed || [],
+              columns: result.columns || {}
+            });
+            setPreviewId(result.previewId);
+            setStep("preview");
+          } else {
+            setError(result.message);
+          }
+        } catch (err) {
+          setError("Failed to load test sample: " + err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      // Handle row selection
+      const toggleEmailSelection = (email) => {
+        const newSelected = new Set(selectedEmails);
+        if (newSelected.has(email)) {
+          newSelected.delete(email);
+        } else {
+          newSelected.add(email);
+        }
+        setSelectedEmails(newSelected);
+      };
+
+      // Select all emails (respecting filters)
+      const selectAllEmails = () => {
+        const filteredRecords = uploadedData.records.filter(record => {
+          if (filters.position && !record.Position?.toLowerCase().includes(filters.position.toLowerCase())) return false;
+          if (filters.department && !record.Department?.toLowerCase().includes(filters.department.toLowerCase())) return false;
+          if (filters.salaryMin && parseInt(record.Salary || 0) < parseInt(filters.salaryMin)) return false;
+          if (filters.salaryMax && parseInt(record.Salary || 0) > parseInt(filters.salaryMax)) return false;
+          return true;
+        });
+        
+        if (selectedEmails.size === filteredRecords.length) {
+          setSelectedEmails(new Set());
+        } else {
+          const allEmails = new Set(filteredRecords.map((r) => r.email || r.Email || ""));
+          setSelectedEmails(allEmails);
+        }
+      };
+
+      // Confirm send
+      const handleConfirmSend = async () => {
+        if (selectedEmails.size === 0) {
+          setError("Please select at least one email");
+          return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        try {
+          const response = await fetch("/api/bulk/confirm-send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              previewId: previewId,
+              type: emailType,
+              selectedEmails: Array.from(selectedEmails)
+            })
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            // Initialize email statuses for each selected email
+            const statuses = {};
+            Array.from(selectedEmails).forEach((email) => {
+              statuses[email] = { status: "queued", retries: 0, timestamp: Date.now() };
+            });
+            setEmailStatuses(statuses);
+
+            console.log("🚀 [CAMPAIGN_START] Sending", selectedEmails.size, "emails | Job IDs:", result.campaign.jobIds);
+
+            setCampaignStatus({
+              totalEmails: selectedEmails.size,
+              jobIds: result.campaign.jobIds,
+              startTime: Date.now(),
+              estimatedTime: result.campaign.estimatedTime
+            });
+            setStep("sending");
+            
+            console.log("⏱️ [START_POLLING] Starting polling every 500ms | Campaign completed flag:", campaignCompleted);
+            // Start polling status every 500ms for real-time updates
+            const pollInterval = setInterval(() => {
+              pollQueueStatus();
+            }, 500);
+            setStatusPolling(pollInterval);
+          } else {
+            setError(result.message);
+          }
+        } catch (err) {
+          setError("Failed to send emails: " + err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      // Poll queue status with real-time updates  
+      const pollQueueStatus = async () => {
+        try {
+          // Only log if campaign is still running
+          if (!campaignCompleted) {
+            console.log("📊 [POLL] Checking status...");
+          }
+
+          // Fetch overall queue stats
+          const response = await fetch("/api/bulk/status");
+          const result = await response.json();
+
+          if (result.success) {
+            setCampaignStatus((prevStatus) => {
+              if (!prevStatus) {
+                console.log("⚠️ [POLL] prevStatus is null, skipping update");
+                return prevStatus;
+              }
+              
+              // DO NOT merge global queue stats - keep only current campaign data
+              // Just return as-is, we'll update with actual job counts below
+              const updated = { ...prevStatus };
+              console.log("✏️ [UPDATE] Campaign status - Total:", updated.totalEmails);
+
+              // Fetch individual email statuses from job details
+              if (prevStatus?.jobIds?.length > 0) {
+                // Call async function separately to update emailStatuses
+                (async () => {
+                  const updatedStatuses = {};
+                  let sentCount = 0;
+                  let failedCount = 0;
+                  let processingCount = 0;
+                  
+                  for (const jobId of prevStatus.jobIds) {
+                    try {
+                      const jobResponse = await fetch(`/api/bulk/job/${jobId}`);
+                      const jobResult = await jobResponse.json();
+                      
+                      if (jobResult.success && jobResult.job) {
+                        const job = jobResult.job;
+                        const email = job.data?.email;
+                        
+                        if (email) {
+                          let status = "queued";
+                          
+                          // Map job state to readable status
+                          if (job.state === "completed") {
+                            status = "sent";
+                            sentCount++;
+                          } else if (job.state === "failed") {
+                            status = "failed";
+                            failedCount++;
+                          } else if (job.state === "active") {
+                            status = "processing";
+                            processingCount++;
+                          } else if (job.state === "delayed") {
+                            status = "retrying";
+                            processingCount++;
+                          }
+                          
+                          updatedStatuses[email] = {
+                            email: email,
+                            status: status,
+                            retries: job.attemptsMade || 0,
+                            timestamp: job.finishedOn || job.processedOn || Date.now(),
+                            failedReason: job.failedReason,
+                          };
+                        }
+                      }
+                    } catch (err) {
+                      console.error(`❌ [JOB_FETCH] Error fetching job ${jobId}:`, err);
+                    }
+                  }
+                  
+                  // Update email statuses
+                  setEmailStatuses(updatedStatuses);
+                  
+                  if (!campaignCompleted) {
+                    console.log("📧 [EMAIL_STATUS] Sent:", sentCount, "Failed:", failedCount, "Processing:", processingCount);
+                  }
+                  
+                  // Check if all jobs are done (count only our campaign's jobs)
+                  const allJobsDone = sentCount + failedCount === prevStatus.jobIds.length;
+                  
+                  if (!campaignCompleted) {
+                    console.log("✅ [JOB_COUNT_CHECK] Sent + Failed =", sentCount + failedCount, "out of", prevStatus.jobIds.length, "| All Done?", allJobsDone);
+                  }
+                  
+                  if (allJobsDone && !campaignCompleted) {
+                    console.log("🎯 [FINAL_CHECK] All jobs from current campaign are complete!");
+                    // Update campaign status with final counts
+                    setCampaignStatus((prevStatus) => ({
+                      ...prevStatus,
+                      completed: sentCount,
+                      failed: failedCount
+                    }));
+                    setCampaignCompleted(true);
+                  }
+                })();
+              }
+
+              return updated;
+            });
+          } else {
+            console.error("❌ [API_ERROR]", result.message);
+          }
+        } catch (err) {
+          console.error("❌ [POLL_ERROR] Polling error:", err);
+        }
+      };
+
+      // Auto-refresh results when on results page
+      useEffect(() => {
+        if (step === "results" && campaignStatus?.jobIds?.length > 0) {
+          const refreshInterval = setInterval(() => {
+            pollQueueStatus();
+          }, 2000); // Refresh every 2 seconds on results page
+          
+          return () => {
+            if (refreshInterval) clearInterval(refreshInterval);
+          };
+        }
+      }, [step, campaignStatus?.jobIds]);
+
+      // Reset app - Clear everything and start fresh
+      const handleReset = () => {
+        // Clear all intervals
+        if (statusPolling) {
+          clearInterval(statusPolling);
+          setStatusPolling(null);
+        }
+        
+        // Reset all state
+        setStep("upload");
+        setFile(null);
+        setEmailType("offer");
+        setUploadedData(null);
+        setSelectedEmails(new Set());
+        setPreviewId(null);
+        setCampaignStatus(null);
+        setEmailStatuses({});
+        setError(null);
+        setLoading(false);
+        setCampaignCompleted(false);
+        setFilters({
+          position: "",
+          department: "",
+          salaryMin: "",
+          salaryMax: "",
+        });
+      };
+
+      // Watch for campaign completion and transition to results
+      useEffect(() => {
+        if (campaignCompleted && step === "sending") {
+          console.log("👀 [useEffect] Detected campaignCompleted=true! Stopping polling and moving to Step 5...");
+          
+          if (statusPolling) {
+            console.log("🛑 [CLEANUP] Clearing polling interval");
+            clearInterval(statusPolling);
+            setStatusPolling(null);
+          }
+          
+          setTimeout(() => {
+            console.log("🎯 [TRANSITION] Setting step to results");
+            setStep("results");
+          }, 500);
+        }
+      }, [campaignCompleted, step, statusPolling]);
+
+      return (
+        <div className="container">
+          <div className="header">
+            <h1>📧 Bulk Email Manager</h1>
+            <p>Enterprise-grade email distribution with queue management</p>
+          </div>
+
+          <div className="main-content">
+            {error && <div className="error-message">❌ {error}</div>}
+
+            {/* UPLOAD STEP */}
+            {step === "upload" && (
+              <div className="section">
+                <h2 className="section-title">📤 Step 1: Upload File</h2>
+
+                {/* Info Box About Campaigns */}
+                <div style={{ backgroundColor: "#e3f2fd", border: "1px solid #90caf9", borderRadius: "8px", padding: "20px", marginBottom: "30px" }}>
+                  <h3 style={{ color: "#1976d2", marginTop: 0, fontSize: "16px" }}>📧 What is a Bulk Email Campaign?</h3>
+                  <p style={{ margin: "10px 0", color: "#1565c0", fontSize: "14px" }}>
+                    A bulk email campaign sends emails to <strong>multiple people at once</strong> in a fast, organized way.
+                  </p>
+                  <div style={{ marginLeft: "20px", color: "#0d47a1", fontSize: "13px" }}>
+                    <p><strong>✅ Why Use It?</strong></p>
+                    <ul style={{ marginTop: "5px", paddingLeft: "20px" }}>
+                      <li>Send to 100s of people in minutes (not hours)</li>
+                      <li>Track which emails succeeded or failed</li>
+                      <li>Automatic retry if email fails</li>
+                      <li>Real-time progress monitoring</li>
+                      <li>Professional & reliable delivery</li>
+                    </ul>
+                  </div>
+                  <div style={{ marginLeft: "20px", color: "#0d47a1", fontSize: "13px", marginTop: "10px" }}>
+                    <p><strong>📋 How It Works (5 Simple Steps):</strong></p>
+                    <ol style={{ marginTop: "5px", paddingLeft: "20px" }}>
+                      <li><strong>Upload:</strong> Select an Excel/CSV file with email addresses</li>
+                      <li><strong>Preview:</strong> See the data & select which emails to send</li>
+                      <li><strong>Confirm:</strong> Choose email type (Offer Letter or OTP)</li>
+                      <li><strong>Send:</strong> Watch real-time progress as emails are sent</li>
+                      <li><strong>Results:</strong> See which emails succeeded & which failed</li>
+                    </ol>
+                  </div>
+                  <div style={{ marginTop: "10px", color: "#0d47a1", fontSize: "13px" }}>
+                    <p><strong>⚡ Processing Speed:</strong> 5 emails per second (configurable)</p>
+                    <p><strong>🔄 Retry:</strong> Failed emails retry up to 3 times automatically</p>
+                  </div>
+                </div>
+
+                <div className="upload-area">
+                  <p style={{ fontSize: "18px", marginBottom: "10px" }}>
+                    📊 Select an Excel file or CSV with email data
+                  </p>
+                  <p style={{ fontSize: "14px", color: "#666", marginBottom: "20px" }}>
+                    File must contain columns: email, name, position, salary, department
+                  </p>
+                  <input
+                    type="file"
+                    id="fileInput"
+                    onChange={handleFileUpload}
+                    accept=".xlsx,.xls,.csv"
+                  />
+                  <button className="upload-btn" onClick={() => document.getElementById("fileInput").click()}>
+                    📁 Choose File
+                  </button>
+                </div>
+
+                <div style={{ textAlign: "center", margin: "30px 0" }}>
+                  <p style={{ color: "#999", marginBottom: "15px" }}>Or try with sample data:</p>
+                  <button className="btn btn-primary test-sample-btn" onClick={loadTestSample} disabled={loading}>
+                    {loading ? <div className="loading"></div> : "🧪 Load 4 Test Records"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* PREVIEW STEP */}
+            {step === "preview" && uploadedData && (
+              <div className="section">
+                <h2 className="section-title">👁️ Step 2: Preview & Select</h2>
+
+                <div className="summary-stats">
+                  <div className="stat-box">
+                    <h3>Total Records</h3>
+                    <div className="value">{uploadedData.summary.totalRecords}</div>
+                  </div>
+                  <div className="stat-box">
+                    <h3>Valid Records</h3>
+                    <div className="value">{uploadedData.summary.validRecords}</div>
+                  </div>
+                  <div className={`stat-box ${uploadedData.summary.failedRecords > 0 ? "failed" : ""}`}>
+                    <h3>Failed Records</h3>
+                    <div className="value">{uploadedData.summary.failedRecords}</div>
+                  </div>
+                  <div className="stat-box">
+                    <h3>Success Rate</h3>
+                    <div className="value">{uploadedData.summary.validPercentage}</div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "20px" }}>
+                  <label style={{ fontSize: "16px", fontWeight: "600", marginRight: "20px", display: "block", marginBottom: "10px" }}>
+                    📧 Choose Campaign Type:
+                  </label>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px" }}>
+                    <label style={{ padding: "10px", border: emailType === "offer" ? "2px solid #667eea" : "1px solid #ddd", borderRadius: "6px", cursor: "pointer", backgroundColor: emailType === "offer" ? "#e8eef7" : "#fff" }}>
+                      <input type="radio" name="emailType" value="offer" checked={emailType === "offer"} onChange={(e) => setEmailType(e.target.value)} style={{ marginRight: "8px" }} />
+                      💼 Offer Letter
+                    </label>
+                    <label style={{ padding: "10px", border: emailType === "otp" ? "2px solid #667eea" : "1px solid #ddd", borderRadius: "6px", cursor: "pointer", backgroundColor: emailType === "otp" ? "#e8eef7" : "#fff" }}>
+                      <input type="radio" name="emailType" value="otp" checked={emailType === "otp"} onChange={(e) => setEmailType(e.target.value)} style={{ marginRight: "8px" }} />
+                      🔐 OTP Email
+                    </label>
+                    <label style={{ padding: "10px", border: emailType === "rejection" ? "2px solid #667eea" : "1px solid #ddd", borderRadius: "6px", cursor: "pointer", backgroundColor: emailType === "rejection" ? "#e8eef7" : "#fff" }}>
+                      <input type="radio" name="emailType" value="rejection" checked={emailType === "rejection"} onChange={(e) => setEmailType(e.target.value)} style={{ marginRight: "8px" }} />
+                      ❌ Rejection Letter
+                    </label>
+                    <label style={{ padding: "10px", border: emailType === "interview" ? "2px solid #667eea" : "1px solid #ddd", borderRadius: "6px", cursor: "pointer", backgroundColor: emailType === "interview" ? "#e8eef7" : "#fff" }}>
+                      <input type="radio" name="emailType" value="interview" checked={emailType === "interview"} onChange={(e) => setEmailType(e.target.value)} style={{ marginRight: "8px" }} />
+                      📞 Interview Call
+                    </label>
+                    <label style={{ padding: "10px", border: emailType === "document" ? "2px solid #667eea" : "1px solid #ddd", borderRadius: "6px", cursor: "pointer", backgroundColor: emailType === "document" ? "#e8eef7" : "#fff" }}>
+                      <input type="radio" name="emailType" value="document" checked={emailType === "document"} onChange={(e) => setEmailType(e.target.value)} style={{ marginRight: "8px" }} />
+                      📄 Document Collection
+                    </label>
+                    <label style={{ padding: "10px", border: emailType === "onboarding" ? "2px solid #667eea" : "1px solid #ddd", borderRadius: "6px", cursor: "pointer", backgroundColor: emailType === "onboarding" ? "#e8eef7" : "#fff" }}>
+                      <input type="radio" name="emailType" value="onboarding" checked={emailType === "onboarding"} onChange={(e) => setEmailType(e.target.value)} style={{ marginRight: "8px" }} />
+                      🎯 Onboarding
+                    </label>
+                  </div>
+                </div>
+
+                {uploadedData?.failed && uploadedData.failed.length > 0 && (
+                  <div className="error-message">
+                    ⚠️ {uploadedData.failed.length} records failed validation
+                  </div>
+                )}
+
+                {/* Filter Section */}
+                <div style={{ backgroundColor: "#f5f7fa", border: "1px solid #e0e0e0", borderRadius: "8px", padding: "20px", marginBottom: "20px" }}>
+                  <h3 style={{ fontSize: "16px", fontWeight: "600", margin: "0 0 15px 0", color: "#333" }}>🔍 Filter Candidates (Optional)</h3>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "15px" }}>
+                    <div>
+                      <label style={{ fontSize: "13px", fontWeight: "600", color: "#555", display: "block", marginBottom: "5px" }}>Position</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., Software Engineer"
+                        value={filters.position}
+                        onChange={(e) => setFilters({ ...filters, position: e.target.value })}
+                        style={{ width: "100%", padding: "8px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "13px" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: "13px", fontWeight: "600", color: "#555", display: "block", marginBottom: "5px" }}>Department</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., Engineering"
+                        value={filters.department}
+                        onChange={(e) => setFilters({ ...filters, department: e.target.value })}
+                        style={{ width: "100%", padding: "8px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "13px" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: "13px", fontWeight: "600", color: "#555", display: "block", marginBottom: "5px" }}>Min Salary</label>
+                      <input
+                        type="number"
+                        placeholder="Min"
+                        value={filters.salaryMin}
+                        onChange={(e) => setFilters({ ...filters, salaryMin: e.target.value })}
+                        style={{ width: "100%", padding: "8px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "13px" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: "13px", fontWeight: "600", color: "#555", display: "block", marginBottom: "5px" }}>Max Salary</label>
+                      <input
+                        type="number"
+                        placeholder="Max"
+                        value={filters.salaryMax}
+                        onChange={(e) => setFilters({ ...filters, salaryMax: e.target.value })}
+                        style={{ width: "100%", padding: "8px", border: "1px solid #ddd", borderRadius: "4px", fontSize: "13px" }}
+                      />
+                    </div>
+                  </div>
+                  <p style={{ fontSize: "12px", color: "#999", margin: "10px 0 0 0" }}>💡 Filters are applied in real-time. Leave blank to show all records.</p>
+                </div>
+
+                <div className="table-wrapper" style={{ overflowX: "auto", maxHeight: "600px", overflowY: "auto", border: "1px solid #ddd", borderRadius: "8px" }}>
+                  <table style={{ width: "100%", minWidth: "800px", borderCollapse: "collapse" }}>
+                    <thead style={{ position: "sticky", top: 0, backgroundColor: "#f5f5f5", zIndex: 10 }}>
+                      <tr>
+                        <th style={{ width: "50px", padding: "12px", textAlign: "center", borderBottom: "2px solid #667eea", backgroundColor: "#667eea", color: "white" }}>
+                          <input
+                            type="checkbox"
+                            className="checkbox"
+                            checked={uploadedData?.records && selectedEmails.size === uploadedData.records.filter(r => {
+                              if (filters.position && !r.Position?.toLowerCase().includes(filters.position.toLowerCase())) return false;
+                              if (filters.department && !r.Department?.toLowerCase().includes(filters.department.toLowerCase())) return false;
+                              if (filters.salaryMin && parseInt(r.Salary || 0) < parseInt(filters.salaryMin)) return false;
+                              if (filters.salaryMax && parseInt(r.Salary || 0) > parseInt(filters.salaryMax)) return false;
+                              return true;
+                            }).length}
+                            onChange={selectAllEmails}
+                          />
+                        </th>
+                        {uploadedData?.records && uploadedData.records.length > 0 && 
+                          Object.keys(uploadedData.records[0]).map((col) => (
+                            <th key={col} style={{ padding: "12px", textAlign: "left", borderBottom: "2px solid #667eea", backgroundColor: "#667eea", color: "white", whiteSpace: "nowrap" }}>
+                              {col}
+                            </th>
+                          ))
+                        }
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {uploadedData?.records && uploadedData.records.filter(record => {
+                        // Apply filters
+                        if (filters.position && !record.Position?.toLowerCase().includes(filters.position.toLowerCase())) return false;
+                        if (filters.department && !record.Department?.toLowerCase().includes(filters.department.toLowerCase())) return false;
+                        if (filters.salaryMin && parseInt(record.Salary || 0) < parseInt(filters.salaryMin)) return false;
+                        if (filters.salaryMax && parseInt(record.Salary || 0) > parseInt(filters.salaryMax)) return false;
+                        return true;
+                      }).map((record, idx) => (
+                        <tr key={idx} style={{ borderBottom: "1px solid #e0e0e0", backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f9f9f9" }}>
+                          <td style={{ padding: "12px", textAlign: "center", fontWeight: "600" }}>
+                            <input
+                              type="checkbox"
+                              className="checkbox"
+                              checked={selectedEmails.has(record.email || record.Email || "")}
+                              onChange={() => toggleEmailSelection(record.email || record.Email || "")}
+                            />
+                          </td>
+                          {Object.keys(uploadedData.records[0]).map((col) => (
+                            <td key={col} style={{ padding: "12px", borderRight: "1px solid #e0e0e0", maxWidth: "300px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={String(record[col] || '-')}>
+                              {col.toLowerCase().includes('email') ? (
+                                <span style={{ backgroundColor: "#e3f2fd", padding: "4px 8px", borderRadius: "4px", fontWeight: "500" }}>
+                                  {record[col] || '-'}
+                                </span>
+                              ) : (
+                                record[col] || '-'
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="action-buttons">
+                  <button className="btn btn-secondary" onClick={() => setStep("upload")}>
+                    ⬅️ Back
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => setStep("confirm")}
+                    disabled={selectedEmails.size === 0}
+                  >
+                    ✅ Next: Confirm ({selectedEmails.size} selected)
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* CONFIRM STEP */}
+            {step === "confirm" && (
+              <div className="section">
+                <h2 className="section-title">⚠️ Step 3: Confirm Sending</h2>
+
+                <div className="preview-section">
+                  <p style={{ marginBottom: "20px" }}>
+                    You are about to send <strong>{selectedEmails.size}</strong> emails of type{" "}
+                    <span className="email-badge" style={{ marginLeft: "10px" }}>
+                      {emailType === "offer" ? "💼 Offer Letter" : 
+                       emailType === "otp" ? "🔐 OTP" :
+                       emailType === "rejection" ? "❌ Rejection Letter" :
+                       emailType === "interview" ? "📞 Interview Call" :
+                       emailType === "document" ? "📄 Document Collection" :
+                       emailType === "onboarding" ? "🎯 Onboarding" : emailType}
+                    </span>
+                  </p>
+
+                  <p style={{ marginBottom: "20px", color: "#666" }}>
+                    Processing speed: <strong>5 concurrent emails/batch</strong>
+                  </p>
+
+                  <p style={{ marginBottom: "20px", color: "#666" }}>
+                    Estimated time: <strong>~{Math.ceil(selectedEmails.size / 5)} seconds</strong>
+                  </p>
+
+                  <p style={{ marginBottom: "20px", fontSize: "14px", color: "#999" }}>
+                    ℹ️ Each email is processed once (single attempt)
+                  </p>
+                </div>
+
+                <div className="action-buttons">
+                  <button className="btn btn-secondary" onClick={() => setStep("preview")}>
+                    ⬅️ Back
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleConfirmSend}
+                    disabled={loading}
+                  >
+                    {loading ? <div className="loading"></div> : "🚀 Send All Emails"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* SENDING STEP */}
+            {step === "sending" && campaignStatus && (
+              <div className="section">
+                <h2 className="section-title">⏳ Step 4: Sending In Progress</h2>
+
+                <div className="preview-section">
+                  <p style={{ fontSize: "18px", fontWeight: "600", marginBottom: "30px", textAlign: "center" }}>
+                    🚀 Sending {campaignStatus.totalEmails} emails in real-time
+                  </p>
+
+                  {/* Large Progress Bar */}
+                  <div style={{ marginBottom: "30px" }}>
+                    <div style={{ marginBottom: "10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "16px", fontWeight: "600", color: "#333" }}>
+                        Overall Progress
+                      </span>
+                      <span style={{ fontSize: "20px", fontWeight: "bold", color: "#667eea" }}>
+                        {Math.min(100, Math.round(((campaignStatus.completed + campaignStatus.failed) / campaignStatus.totalEmails) * 100))}%
+                      </span>
+                    </div>
+                    <div className="progress-bar" style={{ height: "30px", backgroundColor: "#e0e0e0", borderRadius: "15px", overflow: "hidden", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.1)" }}>
+                      <div
+                        className="progress-fill"
+                        style={{
+                          width: `${Math.min(100, ((campaignStatus.completed + campaignStatus.failed) / campaignStatus.totalEmails) * 100)}%`,
+                          height: "100%",
+                          background: "linear-gradient(90deg, #667eea 0%, #764ba2 100%)",
+                          transition: "width 0.3s ease",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "white",
+                          fontWeight: "bold",
+                          fontSize: "14px"
+                        }}
+                      >
+                        {Math.min(100, ((campaignStatus.completed + campaignStatus.failed) / campaignStatus.totalEmails) * 100) > 10 && (
+                          <span>{campaignStatus.completed + campaignStatus.failed} / {campaignStatus.totalEmails}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status Cards */}
+                  <div className="status-section" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "15px", marginBottom: "30px" }}>
+                    <div className="status-item" style={{ backgroundColor: "#e3f2fd", borderLeft: "4px solid #4dabf7" }}>
+                      <span className="status-label">⏯️ Queued</span>
+                      <span className="status-value" style={{ color: "#4dabf7" }}>{campaignStatus.waiting || 0}</span>
+                    </div>
+                    <div className="status-item" style={{ backgroundColor: "#fff3e0", borderLeft: "4px solid #ffa726" }}>
+                      <span className="status-label">⏳ Processing</span>
+                      <span className="status-value" style={{ color: "#ffa726" }}>{campaignStatus.processing || 0}</span>
+                    </div>
+                    <div className="status-item" style={{ backgroundColor: "#e8f5e9", borderLeft: "4px solid #51cf66" }}>
+                      <span className="status-label">✅ Sent</span>
+                      <span className="status-value" style={{ color: "#51cf66" }}>{campaignStatus.completed || 0}</span>
+                    </div>
+                    <div className="status-item" style={{ backgroundColor: "#ffebee", borderLeft: "4px solid #ff6b6b" }}>
+                      <span className="status-label">❌ Failed</span>
+                      <span className="status-value" style={{ color: "#ff6b6b" }}>{campaignStatus.failed || 0}</span>
+                    </div>
+                  </div>
+
+                  <p style={{ marginTop: "20px", fontSize: "14px", color: "#999", textAlign: "center" }}>
+                    ⚡ Real-time updates every 500ms | Polling will stop once all emails are processed
+                  </p>
+                  
+                  {campaignStatus.waiting === 0 && campaignStatus.processing === 0 && (
+                    <div style={{ backgroundColor: "#e8f5e9", border: "2px solid #51cf66", borderRadius: "8px", padding: "15px", marginTop: "20px", textAlign: "center" }}>
+                      <p style={{ color: "#2e7d32", fontWeight: "600", margin: 0 }}>
+                        ✅ Campaign Processing Complete!
+                      </p>
+                      <p style={{ color: "#558b2f", fontSize: "13px", margin: "5px 0 0 0" }}>
+                        No retries for SES sandbox errors • Results loading...
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* RESULTS STEP */}
+            {step === "results" && (
+              <div className="section">
+                <h2 className="section-title">✨ Step 5: Campaign Complete</h2>
+
+                <div className="preview-section">
+                  {campaignStatus ? (
+                    <>
+                      <p style={{ fontSize: "16px", textAlign: "center", marginBottom: "20px" }}>
+                        ✅ Bulk email campaign finished!
+                      </p>
+
+                      <div className="status-section">
+                        <div className="status-item">
+                          <span className="status-label">Total Emails</span>
+                          <span className="status-value">{campaignStatus.totalEmails || 0}</span>
+                        </div>
+                        <div className="status-item">
+                          <span className="status-label">Completed</span>
+                          <span className="status-value" style={{ color: "#51cf66" }}>
+                            {campaignStatus.completed || 0}
+                          </span>
+                        </div>
+                        <div className="status-item">
+                          <span className="status-label">Failed</span>
+                          <span className="status-value" style={{ color: campaignStatus.failed > 0 ? "#ff6b6b" : "#51cf66" }}>
+                            {campaignStatus.failed || 0}
+                          </span>
+                        </div>
+                        <div className="status-item">
+                          <span className="status-label">Success Rate</span>
+                          <span className="status-value">
+                            {campaignStatus.totalEmails > 0 ? ((campaignStatus.completed / campaignStatus.totalEmails) * 100).toFixed(1) : 0}%
+                          </span>
+                        </div>
+                      </div>
+
+                      {campaignStatus.failed > 0 && (
+                        <div className="error-message" style={{ marginTop: "20px" }}>
+                          ⚠️ {campaignStatus.failed} emails failed. Check details below.
+                        </div>
+                      )}
+
+                      {campaignStatus.completed > 0 && (
+                        <div className="success-message" style={{ marginTop: "20px" }}>
+                          ✅ {campaignStatus.completed} emails sent successfully!
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p style={{ fontSize: "16px", textAlign: "center", marginBottom: "20px", color: "#666" }}>
+                      📊 Loading campaign results...
+                    </p>
+                  )}
+                </div>
+
+                {/* Detailed Email Status Table */}
+                <div style={{ marginTop: "40px" }}>
+                  <h3 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "20px" }}>📋 Detailed Email Status ({selectedEmails.size} emails tracked)</h3>
+                  
+                  {selectedEmails.size === 0 ? (
+                    <div style={{ padding: "20px", textAlign: "center", color: "#999", backgroundColor: "#f5f5f5", borderRadius: "8px" }}>
+                      <p>No emails to display</p>
+                    </div>
+                  ) : (
+                    <div style={{ overflowX: "auto", maxHeight: "500px", overflowY: "auto", border: "1px solid #ddd", borderRadius: "8px" }}>
+                      <table style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse" }}>
+                      <thead style={{ position: "sticky", top: 0, backgroundColor: "#667eea", color: "white" }}>
+                        <tr>
+                          <th style={{ padding: "12px", textAlign: "left", whiteSpace: "nowrap" }}>Email Address</th>
+                          <th style={{ padding: "12px", textAlign: "left", whiteSpace: "nowrap" }}>Status</th>
+                          <th style={{ padding: "12px", textAlign: "left", whiteSpace: "nowrap" }}>Retries</th>
+                          <th style={{ padding: "12px", textAlign: "left", whiteSpace: "nowrap" }}>Details</th>
+                          <th style={{ padding: "12px", textAlign: "left", whiteSpace: "nowrap" }}>Time</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Array.from(selectedEmails).map((email, idx) => {
+                          const status = emailStatuses[email] || { status: "queued", retries: 0 };
+                          const statusColor = 
+                            status.status === "sent" ? "#51cf66" :
+                            status.status === "failed" ? "#ff6b6b" :
+                            status.status === "processing" ? "#4dabf7" :
+                            status.status === "queued" ? "#ffa94d" :
+                            "#999";
+                          
+                          const statusIcon = 
+                            status.status === "sent" ? "✅" :
+                            status.status === "failed" ? "❌" :
+                            status.status === "processing" ? "⏳" :
+                            status.status === "queued" ? "⏯️" :
+                            "❓";
+                          
+                          // Check if email is unverified in SES
+                          const isUnverifiedSES = status.failedReason && (status.failedReason.includes("not verified") || status.failedReason.includes("MessageRejected"));
+
+                          return (
+                            <tr key={email} style={{ borderBottom: "1px solid #e0e0e0", backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f9f9f9" }}>
+                              <td style={{ padding: "12px" }}>
+                                <span style={{ backgroundColor: "#e3f2fd", padding: "6px 12px", borderRadius: "4px", fontWeight: "500", fontSize: "13px" }}>
+                                  {email}
+                                </span>
+                              </td>
+                              <td style={{ padding: "12px" }}>
+                                <span style={{ color: statusColor, fontWeight: "600" }}>
+                                  {statusIcon} {status.status.toUpperCase()}
+                                </span>
+                              </td>
+                              <td style={{ padding: "12px", textAlign: "center" }}>
+                                {status.retries > 0 && <span style={{ color: "#ff9800", fontWeight: "600" }}>{status.retries}</span>}
+                                {status.retries === 0 && <span style={{ color: "#ccc" }}>0</span>}
+                              </td>
+                              <td style={{ padding: "12px", fontSize: "12px", color: "#666", maxWidth: "250px", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {isUnverifiedSES && (
+                                  <span style={{ color: "#ff9800", fontWeight: "500" }} title="Email not verified in AWS SES sandbox">
+                                    🔒 Not verified in SES sandbox
+                                  </span>
+                                )}
+                                {status.failedReason && !isUnverifiedSES && (
+                                  <span style={{ color: "#ff6b6b" }} title={status.failedReason}>
+                                    {status.failedReason.substring(0, 40)}...
+                                  </span>
+                                )}
+                                {!status.failedReason && status.status === "sent" && (
+                                  <span style={{ color: "#51cf66" }}>✅ Email delivered</span>
+                                )}
+                              </td>
+                              <td style={{ padding: "12px", fontSize: "12px", color: "#999", whiteSpace: "nowrap" }}>
+                                {status.timestamp ? new Date(status.timestamp).toLocaleTimeString() : "-"}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Info box for SES unverified emails */}
+                {Array.from(selectedEmails).some(email => {
+                  const status = emailStatuses[email] || {};
+                  return status.failedReason && (status.failedReason.includes("not verified") || status.failedReason.includes("MessageRejected"));
+                }) && (
+                  <div style={{ marginTop: "20px", padding: "15px", backgroundColor: "#fff3cd", border: "1px solid #ffc107", borderRadius: "8px" }}>
+                    <p style={{ margin: "0", fontSize: "14px", color: "#856404" }}>
+                      <strong>🔒 SES Sandbox Limitation:</strong> Some emails are not verified in your AWS SES sandbox. To send to them, verify the email addresses in your AWS SES console or request production access.
+                    </p>
+                  </div>
+                )}
+
+                <div className="action-buttons" style={{ marginTop: "40px", display: "flex", gap: "15px", justifyContent: "center", flexWrap: "wrap" }}>
+                  <button className="btn btn-primary" onClick={handleReset} style={{ padding: "14px 32px", fontSize: "16px", fontWeight: "600", minWidth: "200px" }}>
+                    🔄 Start New Campaign
+                  </button>
+                  <button className="btn" onClick={handleReset} style={{ padding: "14px 32px", fontSize: "16px", fontWeight: "600", minWidth: "200px", backgroundColor: "#ff6b6b", color: "white", border: "none", borderRadius: "8px", cursor: "pointer", transition: "all 0.2s" }}>
+                    🗑️ Clear & Reset All
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<BulkEmailApp />, document.getElementById("app"));
+  </script>
+</body>
+</html>

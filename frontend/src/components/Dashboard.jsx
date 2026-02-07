@@ -23,7 +23,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchCandidates = async () => {
       try {
-        const response = await fetch(`${API_URL}/candidates`); 
+        const response = await fetch(`${API_URL}/candidates?limit=all`); 
         const result = await response.json();
         
         // Handle both paginated and raw array formats
@@ -59,9 +59,9 @@ const Dashboard = () => {
       
       {/* --- TOP NAVIGATION --- */}
       <nav className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-50 shadow-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold">T</div>
-          <span className="text-xl font-bold text-slate-800">TriNexus</span>
+        <div className="flex items-center gap-3">
+          <img src="/atslogo.jpg" alt="PeopleConnectHR" className="h-16 w-auto" />
+          <span className="text-2xl font-bold text-slate-800">PeopleConnectHR</span>
         </div>
 
         <div className="flex items-center gap-6">
@@ -93,7 +93,7 @@ const Dashboard = () => {
             <div className="relative z-10">
               <h1 className="text-3xl md:text-4xl font-bold mb-4">Welcome back, {user.name.split(' ')[0]}! 👋</h1>
               <p className="text-indigo-100 text-lg max-w-2xl leading-relaxed">
-                You are logged into the <strong>TriNexus System</strong>. Manage your recruitment, clients, and employees from one central place.
+                You are logged into the <strong>PeopleConnectHR</strong>. Manage your recruitment, clients, and employees from one central place.
               </p>
             </div>
             <div className="absolute right-[-10%] top-[-20%] w-64 h-64 bg-white opacity-10 rounded-full blur-3xl transform"></div>
